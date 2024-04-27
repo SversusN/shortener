@@ -16,27 +16,26 @@ func Test_handlerGet(t *testing.T) {
 	type want struct {
 		contentType string
 		statusCode  int
+		originalURL string
 	}
 	tests := []struct {
-		name        string
-		shortKey    string
-		originalURL string
-		want        want
+		name     string
+		shortKey string
+		want     want
 	}{
 		{
-			name:        "empty originUrl",
-			shortKey:    "/",
-			originalURL: "",
+			name:     "empty originalUrl",
+			shortKey: "/",
 			want: want{
 				statusCode: 400,
 			},
 		},
 		{
-			name:        "no empty originUrl",
-			shortKey:    "/shortKey",
-			originalURL: "https://example.com",
+			name:     "no empty originalUrl",
+			shortKey: "/shortKey",
 			want: want{
-				statusCode: 307,
+				statusCode:  307,
+				originalURL: "https://example.com",
 			},
 		},
 	}
@@ -47,9 +46,10 @@ func Test_handlerGet(t *testing.T) {
 			w := httptest.NewRecorder()
 			handlerGet(w, r)
 			res := w.Result()
+			defer res.Body.Close()
 			assert.Equal(t, tt.want.statusCode, res.StatusCode, "Код статуса не совпадает с ожидаемым")
 			if tt.shortKey != "/" {
-				assert.Equal(t, uriCollection["shortKey"], res.Header.Get("Location"), "Вернуласть не та ссылка или пусто")
+				assert.Equal(t, tt.want.originalURL, res.Header.Get("Location"), "Вернуласть не та ссылка или пусто")
 			}
 		})
 	}
@@ -63,12 +63,12 @@ func Test_handlerPost(t *testing.T) {
 	}
 	tests := []struct {
 		name        string
-		originalUrl string
+		originalURL string
 		want        want
 	}{
 		{
 			name:        "empty originalUrl",
-			originalUrl: "",
+			originalURL: "",
 			want: want{
 				contentType: "",
 				statusCode:  400,
@@ -76,7 +76,7 @@ func Test_handlerPost(t *testing.T) {
 		},
 		{
 			name:        "no empty request",
-			originalUrl: "http://example.com",
+			originalURL: "http://example.com",
 			want: want{
 				contentType: "text/plain",
 				statusCode:  201,
@@ -85,7 +85,7 @@ func Test_handlerPost(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tt.originalUrl))
+			r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tt.originalURL))
 			w := httptest.NewRecorder()
 			handlerPost(w, r)
 			res := w.Result()
