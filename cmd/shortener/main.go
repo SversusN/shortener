@@ -18,7 +18,6 @@ var uriCollection map[string]string
 func main() {
 	//Эмуляция БД мапой
 	uriCollection = make(map[string]string)
-
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", router)
 	err := http.ListenAndServe(":8080", mux)
@@ -69,7 +68,7 @@ func handlerGet(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Shortened key is missing", http.StatusBadRequest)
 		return
 	}
-	//Если не нашли то 404
+	//Если не нашли то bad request
 	originalURL, ok := uriCollection[shortKey]
 	if !ok {
 		http.Error(res, "Shortened key not found", http.StatusBadRequest)
