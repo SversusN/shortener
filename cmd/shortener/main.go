@@ -41,16 +41,15 @@ func router(res http.ResponseWriter, req *http.Request) {
 
 func handlerPost(res http.ResponseWriter, req *http.Request) {
 	fmt.Printf("Пришел %s \n ", req.Method)
-	originalUrl, err := io.ReadAll(req.Body)
+	originalURL, err := io.ReadAll(req.Body)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		log.Printf("Произошла ошибка при чтении ссылки %s", err)
 		return
 	}
-
-	if string(originalUrl) != "" {
+	if string(originalURL) != "" {
 		shortKey := generateShortKey()
-		uriCollection[shortKey] = string(originalUrl)
+		uriCollection[shortKey] = string(originalURL)
 		shortenedURL := fmt.Sprintf("http://localhost:8080/%s", shortKey)
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
@@ -73,7 +72,7 @@ func handlerGet(res http.ResponseWriter, req *http.Request) {
 	//Если не нашли то 404
 	originalURL, ok := uriCollection[shortKey]
 	if !ok {
-		http.Error(res, "Shortened key not found", http.StatusNotFound)
+		http.Error(res, "Shortened key not found", http.StatusBadRequest)
 		return
 	}
 	res.Header().Set("Location", originalURL)
