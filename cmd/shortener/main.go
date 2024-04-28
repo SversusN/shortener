@@ -6,11 +6,14 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"regexp"
 )
 
 const (
 	charset   = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	keyLength = 6
+	//https://reintech.io/blog/working-with-regular-expressions-in-go
+	pattern = `https?://[^\s]+`
 )
 
 var uriCollection map[string]string
@@ -44,6 +47,13 @@ func handlerPost(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		log.Printf("Произошла ошибка при чтении ссылки %s", err)
+		return
+	}
+	stringURL := string(originalURL)
+	match, _ := regexp.MatchString(pattern, stringURL)
+	if !match {
+		http.Error(res, fmt.Sprintf("URL не соответствует формату %s", pattern), http.StatusBadRequest)
+		log.Printf("URL не соответствует формату %s %s", pattern, err)
 		return
 	}
 	if string(originalURL) != "" {

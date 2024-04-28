@@ -75,6 +75,14 @@ func Test_handlerPost(t *testing.T) {
 			},
 		},
 		{
+			name:        "regx error originalUrl",
+			originalURL: "example.com",
+			want: want{
+				contentType: "text/plain; charset=utf-8",
+				statusCode:  400,
+			},
+		},
+		{
 			name:        "no empty request",
 			originalURL: "http://example.com",
 			want: want{
