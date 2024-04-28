@@ -27,7 +27,8 @@ func Test_handlerGet(t *testing.T) {
 			name:     "empty originalUrl",
 			shortKey: "/",
 			want: want{
-				statusCode: 400,
+				statusCode:  400,
+				contentType: "text/plain; charset=utf-8",
 			},
 		},
 		{
@@ -70,7 +71,7 @@ func Test_handlerPost(t *testing.T) {
 			name:        "empty originalUrl",
 			originalURL: "",
 			want: want{
-				contentType: "",
+				contentType: "text/plain; charset=utf-8",
 				statusCode:  400,
 			},
 		},
