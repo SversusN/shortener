@@ -1,11 +1,11 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"io"
 	"log"
-	"math/rand"
 	"net/http"
 	"regexp"
 )
@@ -23,18 +23,22 @@ func main() {
 	//Эмуляция БД мапой
 	uriCollection = make(map[string]string)
 	//go client.GetClient() - клиент сохранен только локально
+
+	/*mux := http.NewServeMux()
+	mux.HandleFunc("/", router)*/
+	log.Fatal(http.ListenAndServe(":8080", ChiRouter()))
+	fmt.Println("Server listening on port 8080")
+}
+func ChiRouter() chi.Router {
 	r := chi.NewRouter()
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", handlerPost)
 		r.Get("/{shortKey}", handlerGet)
 	})
-	/*mux := http.NewServeMux()
-	mux.HandleFunc("/", router)*/
-	log.Fatal(http.ListenAndServe(":8080", r))
-	fmt.Println("Server listening on port 8080")
+	return r
 }
 
-// роутер, более не нужен
+// фнукция роутера, более не нужна
 /*func router(res http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodGet {
 		handlerGet(res, req)
@@ -61,7 +65,7 @@ func handlerPost(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if string(originalURL) != "" {
-		shortKey := generateShortKey()
+		shortKey := base64.StdEncoding.EncodeToString(originalURL)
 		uriCollection[shortKey] = string(originalURL)
 		shortenedURL := fmt.Sprintf("http://localhost:8080/%s", shortKey)
 		res.Header().Set("Content-Type", "text/plain")
@@ -76,9 +80,9 @@ func handlerPost(res http.ResponseWriter, req *http.Request) {
 func handlerGet(res http.ResponseWriter, req *http.Request) {
 	fmt.Println("Пришел GET")
 	//возьмем слайс из URL после /
-	//shortKey := req.URL.Path[len("/"):]
-	//Переделаем на URLParam
-	shortKey := chi.URLParam(req, "shortKey")
+	shortKey := req.URL.Path[len("/"):]
+	//Переделаем на URLParam в тестах пустой контекст
+	//shortKey := chi.URLParam(req, "shortKey")
 	//не передали ключ
 	if shortKey == "" {
 		http.Error(res, "Shortened key is missing", http.StatusBadRequest)
@@ -95,11 +99,12 @@ func handlerGet(res http.ResponseWriter, req *http.Request) {
 }
 
 // Практический уникальный генератор
+// К сожалению плохо подходит для тестирования
 // https://gosamples.dev/random-numbers/
-func generateShortKey() string {
+/*func generateShortKey() string {
 	shortKey := make([]byte, keyLength)
 	for i := range shortKey {
 		shortKey[i] = charset[rand.Intn(len(charset))]
 	}
 	return string(shortKey)
-}
+}*/

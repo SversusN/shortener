@@ -4,105 +4,95 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
 
-func Test_handlerGet(t *testing.T) {
-	uriCollection = make(map[string]string)
-	uriCollection["shortKey"] = "https://example.com"
-	type want struct {
-		contentType string
-		statusCode  int
-		originalURL string
-	}
-	tests := []struct {
-		name     string
-		shortKey string
-		want     want
-	}{
-		{
-			name:     "empty originalUrl",
-			shortKey: "/",
-			want: want{
-				statusCode:  400,
-				contentType: "text/plain; charset=utf-8",
-			},
-		},
-		{
-			name:     "no empty originalUrl",
-			shortKey: "/shortKey",
-			want: want{
-				statusCode:  307,
-				originalURL: "https://example.com",
-			},
-		},
+var actualKey string
+
+func testRequest(t *testing.T, ts *httptest.Server, method, path string, body string) (*http.Response, string) {
+	req, err := http.NewRequest(method, ts.URL+path, strings.NewReader(body))
+	require.NoError(t, err)
+	//
+	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := httptest.NewRequest(http.MethodGet, tt.shortKey, nil)
-			w := httptest.NewRecorder()
-			handlerGet(w, r)
-			res := w.Result()
-			defer res.Body.Close()
-			assert.Equal(t, tt.want.statusCode, res.StatusCode, "Код статуса не совпадает с ожидаемым")
-			if tt.shortKey != "/" {
-				assert.Equal(t, tt.want.originalURL, res.Header.Get("Location"), "Вернуласть не та ссылка или пусто")
-			}
-		})
-	}
+	resp, err := ts.Client().Do(req)
+	require.NoError(t, err)
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			recover()
+			log.Fatal("Error closing body")
+		}
+	}(resp.Body)
+
+	respBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	return resp, string(respBody)
 }
 
-func Test_handlerPost(t *testing.T) {
-	uriCollection = make(map[string]string)
-	type want struct {
-		contentType string
-		statusCode  int
-	}
-	tests := []struct {
-		name        string
-		originalURL string
-		want        want
+func TestRouter(t *testing.T) {
+	ts := httptest.NewServer(ChiRouter())
+	defer ts.Close()
+
+	testCases := []struct {
+		name         string
+		method       string
+		body         string
+		path         string
+		expectedCode int
+		Location     string
 	}{
 		{
-			name:        "empty originalUrl",
-			originalURL: "",
-			want: want{
-				contentType: "text/plain; charset=utf-8",
-				statusCode:  400,
-			},
+			name:         "Good Post request, 201 waiting",
+			method:       http.MethodPost,
+			body:         "http://example.com",
+			expectedCode: http.StatusCreated,
 		},
 		{
-			name:        "regx error originalUrl",
-			originalURL: "example.com",
-			want: want{
-				contentType: "text/plain; charset=utf-8",
-				statusCode:  400,
-			},
+			name:         "Status 404 if no URL",
+			method:       http.MethodGet,
+			path:         "/shortBadKey",
+			expectedCode: http.StatusBadRequest,
 		},
 		{
-			name:        "no empty request",
-			originalURL: "http://example.com",
-			want: want{
-				contentType: "text/plain",
-				statusCode:  201,
-			},
+			name:         "Good request with shortKey",
+			method:       http.MethodGet,
+			path:         "/aHR0cDovL2V4YW1wbGUuY29t",
+			expectedCode: http.StatusTemporaryRedirect,
+			Location:     "http://example.com",
+		},
+		{
+			name:         "Method on is not allowed",
+			method:       http.MethodPost,
+			path:         "/someBadKey",
+			expectedCode: http.StatusMethodNotAllowed,
+		},
+		{
+			name:         "No short key URL",
+			method:       http.MethodGet,
+			path:         "/",
+			expectedCode: http.StatusMethodNotAllowed,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tt.originalURL))
-			w := httptest.NewRecorder()
-			handlerPost(w, r)
-			res := w.Result()
-			assert.Equal(t, tt.want.statusCode, res.StatusCode, "Код статуса не совпадает с ожидаемым")
-			assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"), "Content-Type не совпадает с ожидаемым")
-			defer res.Body.Close()
-			_, err := io.ReadAll(res.Body)
-			require.NoError(t, err, "Неизвестная ошибка")
+	uriCollection = make(map[string]string)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			resp, _ := testRequest(t, ts, tc.method, tc.path, tc.body)
+			defer resp.Body.Close()
+
+			assert.Equal(t, tc.expectedCode, resp.StatusCode, "Response code is not correct")
+
+			if tc.Location != "" {
+				assert.Equal(t, tc.Location, resp.Header.Get("Location"))
+			}
 		})
 	}
 }
