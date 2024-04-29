@@ -67,7 +67,7 @@ func handlerPost(res http.ResponseWriter, req *http.Request) {
 	if string(originalURL) != "" {
 		shortKey := base64.StdEncoding.EncodeToString(originalURL)
 		uriCollection[shortKey] = string(originalURL)
-		shortenedURL := fmt.Sprint("http://", flagBaseAdress, "/", shortKey)
+		shortenedURL := fmt.Sprint(flagBaseAdress, "/", shortKey)
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
 		res.Write([]byte(shortenedURL))
