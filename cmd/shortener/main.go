@@ -26,9 +26,14 @@ func main() {
 
 	/*mux := http.NewServeMux()
 	mux.HandleFunc("/", router)*/
-	log.Fatal(http.ListenAndServe(":8080", ChiRouter()))
-	fmt.Println("Server listening on port 8080")
+	log.Fatal(http.ListenAndServe(flagAdress, ChiRouter()))
+
 }
+
+func init() {
+	ParseFlags()
+}
+
 func ChiRouter() chi.Router {
 	r := chi.NewRouter()
 	r.Route("/", func(r chi.Router) {
@@ -67,7 +72,7 @@ func handlerPost(res http.ResponseWriter, req *http.Request) {
 	if string(originalURL) != "" {
 		shortKey := base64.StdEncoding.EncodeToString(originalURL)
 		uriCollection[shortKey] = string(originalURL)
-		shortenedURL := fmt.Sprintf("http://localhost:8080/%s", shortKey)
+		shortenedURL := fmt.Sprint("http://"+flagBaseAdress, "/", shortKey)
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
 		res.Write([]byte(shortenedURL))
@@ -80,9 +85,9 @@ func handlerPost(res http.ResponseWriter, req *http.Request) {
 func handlerGet(res http.ResponseWriter, req *http.Request) {
 	fmt.Println("Пришел GET")
 	//возьмем слайс из URL после /
-	shortKey := req.URL.Path[len("/"):]
+	//shortKey := req.URL.Path[len("/"):]
 	//Переделаем на URLParam в тестах пустой контекст
-	//shortKey := chi.URLParam(req, "shortKey")
+	shortKey := chi.URLParam(req, "shortKey")
 	//не передали ключ
 	if shortKey == "" {
 		http.Error(res, "Shortened key is missing", http.StatusBadRequest)
