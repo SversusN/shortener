@@ -11,8 +11,6 @@ import (
 )
 
 const (
-	charset   = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	keyLength = 6
 	//https://reintech.io/blog/working-with-regular-expressions-in-go
 	pattern = `https?://[^\s]+`
 )
@@ -20,6 +18,7 @@ const (
 var uriCollection map[string]string
 
 func main() {
+	ParseFlags()
 	//Эмуляция БД мапой
 	uriCollection = make(map[string]string)
 	//go client.GetClient() - клиент сохранен только локально
@@ -28,10 +27,6 @@ func main() {
 	mux.HandleFunc("/", router)*/
 	log.Fatal(http.ListenAndServe(flagAdress, ChiRouter()))
 
-}
-
-func init() {
-	ParseFlags()
 }
 
 func ChiRouter() chi.Router {
@@ -72,7 +67,7 @@ func handlerPost(res http.ResponseWriter, req *http.Request) {
 	if string(originalURL) != "" {
 		shortKey := base64.StdEncoding.EncodeToString(originalURL)
 		uriCollection[shortKey] = string(originalURL)
-		shortenedURL := fmt.Sprint("http://"+flagBaseAdress, "/", shortKey)
+		shortenedURL := fmt.Sprint("http://", flagBaseAdress, "/", shortKey)
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
 		res.Write([]byte(shortenedURL))
