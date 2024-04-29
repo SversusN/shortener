@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"io"
 	"log"
 	"math/rand"
@@ -21,17 +22,20 @@ var uriCollection map[string]string
 func main() {
 	//Эмуляция БД мапой
 	uriCollection = make(map[string]string)
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", router)
-	err := http.ListenAndServe(":8080", mux)
-	if err != nil {
-		panic(err)
-	}
+	//go client.GetClient() - клиент сохранен только локально
+	r := chi.NewRouter()
+	r.Route("/", func(r chi.Router) {
+		r.Post("/", handlerPost)
+		r.Get("/{shortKey}", handlerGet)
+	})
+	/*mux := http.NewServeMux()
+	mux.HandleFunc("/", router)*/
+	log.Fatal(http.ListenAndServe(":8080", r))
 	fmt.Println("Server listening on port 8080")
 }
 
-// роутер
-func router(res http.ResponseWriter, req *http.Request) {
+// роутер, более не нужен
+/*func router(res http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodGet {
 		handlerGet(res, req)
 	} else if req.Method == http.MethodPost {
@@ -39,7 +43,7 @@ func router(res http.ResponseWriter, req *http.Request) {
 	} else {
 		res.WriteHeader(http.StatusBadRequest)
 	}
-}
+}*/
 
 func handlerPost(res http.ResponseWriter, req *http.Request) {
 	fmt.Printf("Пришел %s \n ", req.Method)
@@ -72,7 +76,9 @@ func handlerPost(res http.ResponseWriter, req *http.Request) {
 func handlerGet(res http.ResponseWriter, req *http.Request) {
 	fmt.Println("Пришел GET")
 	//возьмем слайс из URL после /
-	shortKey := req.URL.Path[len("/"):]
+	//shortKey := req.URL.Path[len("/"):]
+	//Переделаем на URLParam
+	shortKey := chi.URLParam(req, "shortKey")
 	//не передали ключ
 	if shortKey == "" {
 		http.Error(res, "Shortened key is missing", http.StatusBadRequest)
