@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/SversusN/shortener/internal/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -10,8 +11,6 @@ import (
 	"strings"
 	"testing"
 )
-
-var actualKey string
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body string) (*http.Response, string) {
 	req, err := http.NewRequest(method, ts.URL+path, strings.NewReader(body))
@@ -38,7 +37,8 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 }
 
 func TestRouter(t *testing.T) {
-	ts := httptest.NewServer(ChiRouter())
+	a := app.New()
+	ts := httptest.NewServer(a.Router)
 	defer ts.Close()
 
 	testCases := []struct {
@@ -81,7 +81,7 @@ func TestRouter(t *testing.T) {
 			expectedCode: http.StatusMethodNotAllowed,
 		},
 	}
-	uriCollection = make(map[string]string)
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
