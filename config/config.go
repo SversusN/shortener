@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"flag"
+	"os"
 	"strings"
 )
 
@@ -18,7 +19,7 @@ func NewConfig() (c *Config) {
 	}
 
 	// указываем ссылку на переменную, имя флага, значение по умолчанию и описание
-	flag.StringVar(&c.FlagAddress, "a", c.FlagAddress, "Устанавливаем ip адрес нашего сервера.")
+	flag.StringVar(&c.FlagAddress, "a", c.FlagAddress, "set server IP address")
 	flag.Func("b", "URL for redirect", func(flagValue string) error {
 		hp := strings.Split(flagValue, ":")
 		if len(hp) < 2 {
@@ -32,11 +33,11 @@ func NewConfig() (c *Config) {
 		return nil
 	})
 	flag.Parse()
-	//if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
-	//	c.FlagAddress = envRunAddr
-	//}
-	//if envRunAddr := os.Getenv("BASE_URL"); envRunAddr != "" {
-	//	c.FlagBaseAddress = envRunAddr
-	//}
+	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
+		c.FlagAddress = envRunAddr
+	}
+	if envRunAddr := os.Getenv("BASE_URL"); envRunAddr != "" {
+		c.FlagBaseAddress = envRunAddr
+	}
 	return c
 }

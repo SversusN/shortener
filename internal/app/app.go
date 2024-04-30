@@ -6,7 +6,6 @@ import (
 	"github.com/SversusN/shortener/internal/storage/primitivestorage"
 	"github.com/SversusN/shortener/internal/storage/storage"
 	"github.com/go-chi/chi/v5"
-	"net/http"
 )
 
 type App struct {
@@ -17,22 +16,18 @@ type App struct {
 }
 
 func New() *App {
-	appconfig := config.NewConfig()
-	newStorage := primitivestorage.NewStorage()
-	apphandlers := handlers.NewHandlers(appconfig, newStorage)
+	cfg := config.NewConfig()
+	ns := primitivestorage.NewStorage()
+	nh := handlers.NewHandlers(cfg, ns)
 
-	return &App{appconfig,
-		newStorage,
-		apphandlers,
-		CreateRouter(apphandlers.HandlerGet, apphandlers.HandlerPost),
-	}
+	return &App{cfg, ns, nh, CreateRouter(*nh)}
 }
 
-func CreateRouter(g http.HandlerFunc, p http.HandlerFunc) chi.Router {
+func CreateRouter(hnd handlers.Handlers) chi.Router {
 	r := chi.NewRouter()
 	r.Route("/", func(r chi.Router) {
-		r.Post("/", p)
-		r.Get("/{shortKey}", g)
+		r.Post("/", hnd.HandlerPost)
+		r.Get("/{shortKey}", hnd.HandlerGet)
 	})
 	return r
 }

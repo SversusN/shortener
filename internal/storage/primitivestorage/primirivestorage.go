@@ -15,17 +15,17 @@ func NewStorage() *MapStorage {
 }
 
 func (m MapStorage) GetURL(id string) (string, error) {
-	targetURL, ok := m.data[id]
+	originalURL, ok := m.data[id]
 	if !ok {
 		return "", errors.New("original url not found")
 	}
-	return targetURL, nil
+	return originalURL, nil
 }
 
-func (m MapStorage) SetURL(id string, targetURL string) error {
+func (m MapStorage) SetURL(id string, originalURL string) error {
 	if _, ok := m.data[id]; ok {
 		return errors.New("short-key already created")
 	}
-	m.data[id] = targetURL
+	m.data[id] = originalURL
 	return nil
 }

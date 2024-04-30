@@ -24,6 +24,7 @@ func GetClient() {
 		panic(err)
 	}
 	long = strings.TrimSuffix(long, "\n")
+	
 	// заполняем контейнер данными
 	data.Set("url", long)
 	// добавляем HTTP-клиент

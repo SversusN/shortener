@@ -13,12 +13,12 @@ import (
 )
 
 type Handlers struct {
-	config       *config.Config
-	localstorage storage.Storage
+	cfg *config.Config
+	s   storage.Storage
 }
 
-func NewHandlers(config *config.Config, localstorage storage.Storage) *Handlers {
-	return &Handlers{config, localstorage}
+func NewHandlers(cfg *config.Config, s storage.Storage) *Handlers {
+	return &Handlers{cfg, s}
 }
 
 const (
@@ -27,32 +27,31 @@ const (
 )
 
 func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
-	fmt.Printf("Пришел %s \n ", req.Method)
+	log.Printf("Request %s \n ", req.Method)
 	originalURL, err := io.ReadAll(req.Body)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
-		log.Printf("Произошла ошибка при чтении ссылки %s", err)
+		log.Printf("Error parsing URL %s", err)
 		return
 	}
 	stringURL := string(originalURL)
 	match, _ := regexp.MatchString(pattern, stringURL)
 	if !match {
-		http.Error(res, fmt.Sprintf("URL не соответствует формату %s", pattern), http.StatusBadRequest)
-		log.Printf("URL не соответствует формату %s %s", pattern, err)
+		http.Error(res, fmt.Sprintf("Bad URL, need pattern %s", pattern), http.StatusBadRequest)
+		log.Printf("Bad URL, need pattern %s %s", pattern, err)
 		return
 	}
 	if string(originalURL) != "" {
-		shortKey := base64.StdEncoding.EncodeToString(originalURL)
-		//uriCollection[shortKey] = string(originalURL)
-		err := h.localstorage.SetURL(shortKey, string(originalURL))
-		if err != nil {
-			log.Println("smth bad with datastorage, $v", err)
+		key := base64.StdEncoding.EncodeToString(originalURL)
+		e := h.s.SetURL(key, string(originalURL))
+		if e != nil {
+			log.Println("smth bad with data storage, mb double key ->", e)
 		}
-		shortenedURL := fmt.Sprint(h.config.FlagBaseAddress, "/", shortKey)
+		shortURL := fmt.Sprint(h.cfg.FlagBaseAddress, "/", key)
 
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
-		res.Write([]byte(shortenedURL))
+		res.Write([]byte(shortURL))
 	} else {
 		res.WriteHeader(http.StatusBadRequest)
 	}
@@ -60,14 +59,13 @@ func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h Handlers) HandlerGet(res http.ResponseWriter, req *http.Request) {
-	fmt.Println("Пришел GET")
-	shortKey := chi.URLParam(req, "shortKey")
-	if shortKey == "" {
+	log.Printf("Request %s \n ", req.Method)
+	key := chi.URLParam(req, "shortKey")
+	if key == "" {
 		http.Error(res, "Shortened key is missing", http.StatusBadRequest)
 		return
 	}
-
-	originalURL, err := h.localstorage.GetURL(shortKey)
+	originalURL, err := h.s.GetURL(key)
 	if err != nil {
 		http.Error(res, "Shortened key not found", http.StatusBadRequest)
 		return
