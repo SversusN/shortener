@@ -25,7 +25,8 @@ func main() {
 
 	/*mux := http.NewServeMux()
 	mux.HandleFunc("/", router)*/
-	log.Fatal(http.ListenAndServe(flagAdress, ChiRouter()))
+	fmt.Printf("running on %s\n", flagAddress)
+	log.Fatal(http.ListenAndServe(flagAddress, ChiRouter()))
 
 }
 
@@ -67,7 +68,8 @@ func handlerPost(res http.ResponseWriter, req *http.Request) {
 	if string(originalURL) != "" {
 		shortKey := base64.StdEncoding.EncodeToString(originalURL)
 		uriCollection[shortKey] = string(originalURL)
-		shortenedURL := fmt.Sprint(flagBaseAdress, "/", shortKey)
+		shortenedURL := fmt.Sprint(flagBaseAddress, "/", shortKey)
+		fmt.Printf("url %v", flagBaseAddress)
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
 		res.Write([]byte(shortenedURL))
