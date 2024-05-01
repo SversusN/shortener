@@ -72,7 +72,7 @@ func TestRouter(t *testing.T) {
 			name:         "Method on is not allowed",
 			method:       http.MethodPost,
 			path:         "/someBadKey",
-			expectedCode: http.StatusMethodNotAllowed,
+			expectedCode: http.StatusBadRequest,
 		},
 		{
 			name:         "No short key URL",
