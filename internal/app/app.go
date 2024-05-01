@@ -13,18 +13,16 @@ type App struct {
 	Config   *config.Config
 	Storage  storage.Storage
 	Handlers *handlers.Handlers
-	Router   chi.Router
 }
 
 func New() *App {
 	cfg := config.NewConfig()
 	ns := primitivestorage.NewStorage()
 	nh := handlers.NewHandlers(cfg, ns)
-
-	return &App{cfg, ns, nh, CreateRouter(*nh)}
+	return &App{cfg, ns, nh}
 }
 
-func CreateRouter(hnd handlers.Handlers) chi.Router {
+func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 	r := chi.NewRouter()
 	r.Use(mw.New(r))
 	r.Route("/", func(r chi.Router) {

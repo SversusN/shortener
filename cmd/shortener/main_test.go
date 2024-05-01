@@ -38,7 +38,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 
 func TestRouter(t *testing.T) {
 	a := app.New()
-	ts := httptest.NewServer(a.Router)
+	ts := httptest.NewServer(a.CreateRouter(*a.Handlers))
 	defer ts.Close()
 
 	testCases := []struct {
