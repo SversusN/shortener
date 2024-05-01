@@ -9,7 +9,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"regexp"
 )
 
 type Handlers struct {
@@ -21,11 +20,6 @@ func NewHandlers(cfg *config.Config, s storage.Storage) *Handlers {
 	return &Handlers{cfg, s}
 }
 
-const (
-	//https://reintech.io/blog/working-with-regular-expressions-in-go
-	pattern = `https?://[^\s]+`
-)
-
 func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 	log.Printf("Request %s \n ", req.Method)
 	originalURL, err := io.ReadAll(req.Body)
@@ -34,14 +28,8 @@ func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 		log.Printf("Error parsing URL %s", err)
 		return
 	}
-	stringURL := string(originalURL)
-	match, _ := regexp.MatchString(pattern, stringURL)
-	if !match {
-		http.Error(res, fmt.Sprintf("Bad URL, need pattern %s", pattern), http.StatusBadRequest)
-		log.Printf("Bad URL, need pattern %s %s", pattern, err)
-		return
-	}
-	if string(originalURL) != "" {
+
+	if len(originalURL) > 0 {
 		key := base64.StdEncoding.EncodeToString(originalURL)
 		e := h.s.SetURL(key, string(originalURL))
 		if e != nil {
@@ -55,7 +43,6 @@ func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 	} else {
 		res.WriteHeader(http.StatusBadRequest)
 	}
-
 }
 
 func (h Handlers) HandlerGet(res http.ResponseWriter, req *http.Request) {

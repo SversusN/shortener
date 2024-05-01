@@ -3,6 +3,7 @@ package app
 import (
 	"github.com/SversusN/shortener/config"
 	"github.com/SversusN/shortener/internal/handlers"
+	mw "github.com/SversusN/shortener/internal/middleware"
 	"github.com/SversusN/shortener/internal/storage/primitivestorage"
 	"github.com/SversusN/shortener/internal/storage/storage"
 	"github.com/go-chi/chi/v5"
@@ -25,6 +26,7 @@ func New() *App {
 
 func CreateRouter(hnd handlers.Handlers) chi.Router {
 	r := chi.NewRouter()
+	r.Use(mw.New(r))
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", hnd.HandlerPost)
 		r.Get("/{shortKey}", hnd.HandlerGet)
