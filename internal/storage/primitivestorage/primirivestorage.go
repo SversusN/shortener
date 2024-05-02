@@ -2,30 +2,34 @@ package primitivestorage
 
 import (
 	"errors"
+	"log"
+	"sync"
 )
 
 type MapStorage struct {
-	data map[string]string
+	data sync.Map
+	//data map[string]string
 }
 
 func NewStorage() *MapStorage {
 	return &MapStorage{
-		data: make(map[string]string),
+		data: sync.Map{},
 	}
 }
 
-func (m MapStorage) GetURL(id string) (string, error) {
-	originalURL, ok := m.data[id]
+func (m *MapStorage) GetURL(id string) (string, error) {
+	originalURL, ok := m.data.Load(id)
 	if !ok {
 		return "", errors.New("original url not found")
 	}
-	return originalURL, nil
+	s := originalURL.(string)
+	return s, nil
 }
 
-func (m MapStorage) SetURL(id string, originalURL string) error {
-	if _, ok := m.data[id]; ok {
-		return errors.New("short-key already created")
+func (m *MapStorage) SetURL(id string, originalURL string) error {
+	_, loaded := m.data.LoadOrStore(id, originalURL)
+	if loaded {
+		log.Println("key is already in the storage")
 	}
-	m.data[id] = originalURL
 	return nil
 }

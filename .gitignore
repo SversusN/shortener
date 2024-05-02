@@ -22,3 +22,6 @@ vendor/
 .idea
 .vscode
 /cmd/client
+.golangci.yml
+golangci-lint/report-unformatted.json
+Makefile

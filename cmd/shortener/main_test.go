@@ -39,6 +39,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 func TestRouter(t *testing.T) {
 	a := app.New()
 	ts := httptest.NewServer(a.CreateRouter(*a.Handlers))
+	a.Storage.SetURL("sk", "http://example.com")
 	defer ts.Close()
 
 	testCases := []struct {
@@ -64,7 +65,7 @@ func TestRouter(t *testing.T) {
 		{
 			name:         "Good request with shortKey",
 			method:       http.MethodGet,
-			path:         "/aHR0cDovL2V4YW1wbGUuY29t",
+			path:         "/sk",
 			expectedCode: http.StatusTemporaryRedirect,
 			Location:     "http://example.com",
 		},
