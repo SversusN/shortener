@@ -2,13 +2,15 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/SversusN/shortener/config"
-	"github.com/SversusN/shortener/internal/pkg"
-	"github.com/SversusN/shortener/internal/storage/storage"
-	"github.com/go-chi/chi/v5"
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/SversusN/shortener/config"
+	"github.com/SversusN/shortener/internal/pkg/utils"
+	"github.com/SversusN/shortener/internal/storage/storage"
 )
 
 type Handlers struct {
@@ -31,7 +33,7 @@ func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 
 	if len(originalURL) > 0 {
 		//key := base64.StdEncoding.EncodeToString(originalURL) //слеши в base64 ломают url
-		key := pkg.GenerateShortKey()
+		key := utils.GenerateShortKey()
 		e := h.s.SetURL(key, string(originalURL))
 		if e != nil {
 			log.Println("smth bad with data storage, mb double key ->", e)

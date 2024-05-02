@@ -2,14 +2,16 @@ package app
 
 import (
 	"fmt"
+	"log"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+
 	"github.com/SversusN/shortener/config"
 	"github.com/SversusN/shortener/internal/handlers"
 	mw "github.com/SversusN/shortener/internal/middleware"
 	"github.com/SversusN/shortener/internal/storage/primitivestorage"
 	"github.com/SversusN/shortener/internal/storage/storage"
-	"github.com/go-chi/chi/v5"
-	"log"
-	"net/http"
 )
 
 type App struct {
