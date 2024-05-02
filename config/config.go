@@ -17,7 +17,6 @@ func NewConfig() (c *Config) {
 		FlagAddress:     ":8080",
 		FlagBaseAddress: "http://localhost:8080",
 	}
-
 	// указываем ссылку на переменную, имя флага, значение по умолчанию и описание
 	flag.StringVar(&c.FlagAddress, "a", c.FlagAddress, "set server IP address")
 	flag.Func("b", "URL for redirect", func(flagValue string) error {
