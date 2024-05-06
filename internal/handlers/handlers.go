@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 
 	"github.com/SversusN/shortener/config"
 	"github.com/SversusN/shortener/internal/pkg/utils"
@@ -21,18 +22,6 @@ func NewHandlers(cfg *config.Config, s storage.Storage) *Handlers {
 	return &Handlers{cfg, s}
 }
 
-// HandlerPost PostURL godoc
-//
-//	@Summary		post URL
-//	@Tags			shortener
-//	@Description	post long URL string
-//	@Accept			plain
-//	@Produce		plain
-//	@Param			long_url body		string	 		true    	"long URL"
-//	@Success		200		{string}	string			"success"
-//	@Success		201		{string}    string			"created"
-//	@Success		500		{string}	string			"fail"
-//	@Router			/ [post]
 func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 	log.Printf("Request %s \n ", req.Method)
 	originalURL, err := io.ReadAll(req.Body)
@@ -59,17 +48,6 @@ func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// HandlerGet GetShortURL godoc
-//
-//		@Summary		get URL
-//		@Tags			shortener
-//		@Description	get short URL string
-//		@Produce		plain
-//		@Param			key	path		string	    true 	"short URL"
-//		@Success		200		{string}	string			"success"
-//	    @Failure		404     {string}	string			"not found"
-//		@Failure		500		{string}	string			"fail"
-//		@Router			/{key} [get]
 func (h Handlers) HandlerGet(res http.ResponseWriter, req *http.Request) {
 	log.Printf("Request %s \n ", req.Method)
 	key := chi.URLParam(req, "shortKey")
