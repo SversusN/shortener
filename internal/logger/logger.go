@@ -45,7 +45,7 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 }
 
 func (l ServerLogger) LoggingMW() func(http.Handler) http.Handler {
-
+	sl := l.logger.Sugar()
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, req *http.Request) {
 			defer func() {
@@ -64,7 +64,7 @@ func (l ServerLogger) LoggingMW() func(http.Handler) http.Handler {
 			start := time.Now()
 			next.ServeHTTP(&lw, req)
 			duration := time.Since(start)
-			l.logger.Sugar().Infoln(
+			sl.Infoln(
 				"uri", req.RequestURI,
 				"method", req.Method,
 				"status", responseData.status,
