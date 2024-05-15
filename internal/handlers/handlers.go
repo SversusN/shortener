@@ -23,7 +23,7 @@ func NewHandlers(cfg *config.Config, s storage.Storage) *Handlers {
 }
 
 func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
-	log.Printf("Request %s \n ", req.Method)
+	//log.Printf("Request %s \n ", req.Method)
 	originalURL, err := io.ReadAll(req.Body)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -49,7 +49,7 @@ func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h Handlers) HandlerGet(res http.ResponseWriter, req *http.Request) {
-	log.Printf("Request %s \n ", req.Method)
+	//log.Printf("Request %s \n ", req.Method)
 	key := chi.URLParam(req, "shortKey")
 	if key == "" {
 		http.Error(res, "Shortened key is missing", http.StatusBadRequest)

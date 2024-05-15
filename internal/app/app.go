@@ -2,34 +2,38 @@ package app
 
 import (
 	"fmt"
+	"go.uber.org/zap"
+
 	"log"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-
 	"github.com/SversusN/shortener/config"
 	"github.com/SversusN/shortener/internal/handlers"
-	mw "github.com/SversusN/shortener/internal/middleware"
+	"github.com/SversusN/shortener/internal/logger"
 	"github.com/SversusN/shortener/internal/storage/primitivestorage"
 	"github.com/SversusN/shortener/internal/storage/storage"
+	"github.com/go-chi/chi/v5"
 )
 
 type App struct {
 	Config   *config.Config
 	Storage  storage.Storage
 	Handlers *handlers.Handlers
+	Logger   *logger.ServerLogger
 }
 
 func New() *App {
 	cfg := config.NewConfig()
 	ns := primitivestorage.NewStorage()
 	nh := handlers.NewHandlers(cfg, ns)
-	return &App{cfg, ns, nh}
+	lg := logger.CreateLogger(zap.NewAtomicLevelAt(zap.InfoLevel)) //Хардкод TODO
+	return &App{cfg, ns, nh, lg}
 }
 
 func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 	r := chi.NewRouter()
-	r.Use(mw.New(r))
+	//r.Use(mw.New(r))
+	r.Use(a.Logger.LoggingMW())
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", hnd.HandlerPost)
 		r.Get("/{shortKey}", hnd.HandlerGet)
