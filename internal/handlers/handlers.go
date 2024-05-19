@@ -20,7 +20,7 @@ type Handlers struct {
 }
 
 type JSONRequest struct {
-	Url string `json:"url"`
+	URL string `json:"url"`
 }
 type JSONResponse struct {
 	Result string `json:"result"`
@@ -83,7 +83,7 @@ func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 	}
 	defer req.Body.Close()
 	key := utils.GenerateShortKey()
-	e := h.s.SetURL(key, reqBody.Url)
+	e := h.s.SetURL(key, reqBody.URL)
 	if e != nil {
 		log.Println("smth bad with data storage, mb double key ->", e)
 	}
