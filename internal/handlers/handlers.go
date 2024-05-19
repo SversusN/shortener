@@ -79,7 +79,9 @@ func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 	}
 	var reqBody JSONRequest
 	if err = json.Unmarshal(b, &reqBody); err != nil {
+		//не json
 		log.Printf("Error parsing JSON request body: %s", err)
+		res.WriteHeader(http.StatusBadRequest)
 	}
 	defer req.Body.Close()
 	key := utils.GenerateShortKey()

@@ -2,17 +2,19 @@ package app
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 
 	"log"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
+
 	"github.com/SversusN/shortener/config"
 	"github.com/SversusN/shortener/internal/handlers"
 	"github.com/SversusN/shortener/internal/logger"
+	mw "github.com/SversusN/shortener/internal/middleware"
 	"github.com/SversusN/shortener/internal/storage/primitivestorage"
 	"github.com/SversusN/shortener/internal/storage/storage"
-	"github.com/go-chi/chi/v5"
 )
 
 type App struct {
@@ -34,6 +36,7 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 	r := chi.NewRouter()
 	//r.Use(mw.New(r))
 	r.Use(a.Logger.LoggingMW())
+	r.Use(mw.GzipMiddleware)
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", hnd.HandlerPost)
 		r.Get("/{shortKey}", hnd.HandlerGet)
