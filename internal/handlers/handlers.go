@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -16,6 +17,13 @@ import (
 type Handlers struct {
 	cfg *config.Config
 	s   storage.Storage
+}
+
+type JsonRequest struct {
+	Url string `json:"url"`
+}
+type JsonResponse struct {
+	Result string `json:"result"`
 }
 
 func NewHandlers(cfg *config.Config, s storage.Storage) *Handlers {
@@ -62,4 +70,29 @@ func (h Handlers) HandlerGet(res http.ResponseWriter, req *http.Request) {
 	}
 	res.Header().Set("Location", originalURL)
 	res.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+func (h Handlers) HandlerJsonPost(res http.ResponseWriter, req *http.Request) {
+	b, err := io.ReadAll(req.Body)
+	if err != nil {
+		return
+	}
+	var reqBody JsonRequest
+	if err = json.Unmarshal(b, &reqBody); err != nil {
+		log.Printf("Error parsing JSON request body: %s", err)
+	}
+	defer req.Body.Close()
+	key := utils.GenerateShortKey()
+	e := h.s.SetURL(key, reqBody.Url)
+	if e != nil {
+		log.Println("smth bad with data storage, mb double key ->", e)
+	}
+	shortURL := fmt.Sprint(h.cfg.FlagBaseAddress, "/", key)
+	resBody, e := json.Marshal(JsonResponse{Result: shortURL})
+	if e != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+	}
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusCreated)
+	res.Write(resBody)
 }

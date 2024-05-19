@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"log"
 	"net/http"
 	"time"
 
@@ -51,7 +50,7 @@ func (l ServerLogger) LoggingMW() func(http.Handler) http.Handler {
 	defer func(logger *zap.Logger) {
 		err := logger.Sync()
 		if err != nil {
-			log.Print("Error syncing logger", zap.Error(err))
+			sl.Info("Error syncing logger", zap.Error(err))
 		}
 	}(l.logger)
 	return func(next http.Handler) http.Handler {

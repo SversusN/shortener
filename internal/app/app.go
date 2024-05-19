@@ -37,12 +37,16 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", hnd.HandlerPost)
 		r.Get("/{shortKey}", hnd.HandlerGet)
+		r.Route("/api", func(r chi.Router) {
+			r.Post("/shorten", hnd.HandlerJsonPost)
+		})
 	})
 	return r
 }
 
 func (a App) Run() {
 	r := a.CreateRouter(*a.Handlers)
+
 	//go client.GetClient("http://" + a.Config.FlagAddress)
 	fmt.Printf("running on %s\n", a.Config.FlagAddress)
 	log.Fatal(
