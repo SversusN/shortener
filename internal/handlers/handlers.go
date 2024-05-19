@@ -72,7 +72,7 @@ func (h Handlers) HandlerGet(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func (h Handlers) HandlerJsonPost(res http.ResponseWriter, req *http.Request) {
+func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 	b, err := io.ReadAll(req.Body)
 	if err != nil {
 		return
