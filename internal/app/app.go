@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-
 	"log"
 	"net/http"
 
@@ -13,23 +12,26 @@ import (
 	"github.com/SversusN/shortener/internal/handlers"
 	"github.com/SversusN/shortener/internal/logger"
 	mw "github.com/SversusN/shortener/internal/middleware"
+	"github.com/SversusN/shortener/internal/pkg/utils"
 	"github.com/SversusN/shortener/internal/storage/primitivestorage"
 	"github.com/SversusN/shortener/internal/storage/storage"
 )
 
 type App struct {
-	Config   *config.Config
-	Storage  storage.Storage
-	Handlers *handlers.Handlers
-	Logger   *logger.ServerLogger
+	Config     *config.Config
+	Storage    storage.Storage
+	Handlers   *handlers.Handlers
+	Logger     *logger.ServerLogger
+	FileHelper *utils.FileHelper
 }
 
 func New() *App {
 	cfg := config.NewConfig()
-	ns := primitivestorage.NewStorage()
+	fh := utils.NewFileHelper("C:\\Users\\SversusN\\source\\repos\\shortener\\temp.txt")
+	ns := primitivestorage.NewStorage(*fh)
 	nh := handlers.NewHandlers(cfg, ns)
 	lg := logger.CreateLogger(zap.NewAtomicLevelAt(zap.InfoLevel)) //Хардкод TODO
-	return &App{cfg, ns, nh, lg}
+	return &App{cfg, ns, nh, lg, fh}
 }
 
 func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {

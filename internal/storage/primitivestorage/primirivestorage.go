@@ -4,16 +4,21 @@ import (
 	"errors"
 	"log"
 	"sync"
+
+	"github.com/SversusN/shortener/internal/pkg/utils"
 )
 
 type MapStorage struct {
-	data sync.Map
+	data   *sync.Map
+	helper *utils.FileHelper
 	//data map[string]string
 }
 
-func NewStorage() *MapStorage {
+func NewStorage(helper utils.FileHelper) *MapStorage {
+	dirtyMap := helper.ReadFile()
 	return &MapStorage{
-		data: sync.Map{},
+		data:   dirtyMap,
+		helper: &helper,
 	}
 }
 
@@ -30,6 +35,8 @@ func (m *MapStorage) SetURL(id string, originalURL string) error {
 	_, loaded := m.data.LoadOrStore(id, originalURL)
 	if loaded {
 		log.Println("key is already in the storage")
+	} else {
+		m.helper.WriteFile(originalURL, id)
 	}
 	return nil
 }

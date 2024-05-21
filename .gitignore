@@ -25,3 +25,4 @@ vendor/
 .golangci.yml
 golangci-lint/report-unformatted.json
 Makefile
+temp.txt
