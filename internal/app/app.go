@@ -27,8 +27,8 @@ type App struct {
 
 func New() *App {
 	cfg := config.NewConfig()
-	fh := utils.NewFileHelper("C:\\Users\\SversusN\\source\\repos\\shortener\\temp.txt")
-	ns := primitivestorage.NewStorage(*fh)
+	fh, fherr := utils.NewFileHelper(cfg.FlagFilePath)
+	ns := primitivestorage.NewStorage(fh, fherr)
 	nh := handlers.NewHandlers(cfg, ns)
 	lg := logger.CreateLogger(zap.NewAtomicLevelAt(zap.InfoLevel)) //Хардкод TODO
 	return &App{cfg, ns, nh, lg, fh}

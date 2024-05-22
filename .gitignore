@@ -26,3 +26,4 @@ vendor/
 golangci-lint/report-unformatted.json
 Makefile
 temp.txt
+tmp/short-url-db.json

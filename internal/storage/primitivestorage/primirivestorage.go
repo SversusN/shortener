@@ -14,11 +14,17 @@ type MapStorage struct {
 	//data map[string]string
 }
 
-func NewStorage(helper utils.FileHelper) *MapStorage {
+// хелпер межет придти nil
+func NewStorage(helper *utils.FileHelper, err error) *MapStorage {
+	if err != nil {
+		return &MapStorage{
+			data: &sync.Map{},
+		}
+	}
 	tempMap := helper.ReadFile()
 	return &MapStorage{
 		data:   tempMap,
-		helper: &helper,
+		helper: helper,
 	}
 }
 
@@ -36,7 +42,9 @@ func (m *MapStorage) SetURL(id string, originalURL string) error {
 	if loaded {
 		log.Println("key is already in the storage")
 	} else {
-		m.helper.WriteFile(originalURL, id)
+		if m.helper != nil {
+			m.helper.WriteFile(originalURL, id)
+		}
 	}
 	return nil
 }

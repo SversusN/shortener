@@ -3,6 +3,8 @@ package utils
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
+	"github.com/SversusN/shortener/config"
 	"os"
 	"sync"
 )
@@ -14,16 +16,21 @@ type Fields struct {
 
 type FileHelper struct {
 	file *os.File
+	c    *config.Config
 }
 
-func NewFileHelper(filename string) *FileHelper {
+// возвращаем хелпер или ошибку, чтобы выключить сохранение в файл
+func NewFileHelper(filename string) (*FileHelper, error) {
+	if filename == "" {
+		return nil, errors.New("filename is empty, no store tempdb")
+	}
+
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return &FileHelper{file: file}
+	return &FileHelper{file: file}, nil
 }
-
 func (fh FileHelper) WriteFile(originalURL string, shortKey string) {
 	t := Fields{OriginalURL: originalURL, ShortKey: shortKey}
 	jt, _ := json.Marshal(t)
@@ -35,7 +42,6 @@ func (fh FileHelper) WriteFile(originalURL string, shortKey string) {
 }
 
 func (fh FileHelper) ReadFile() *sync.Map {
-
 	tempMap := sync.Map{}
 	if fh.file != nil {
 		var fields Fields
