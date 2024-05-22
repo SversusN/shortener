@@ -36,19 +36,17 @@ func (fh FileHelper) WriteFile(originalURL string, shortKey string) {
 
 func (fh FileHelper) ReadFile() *sync.Map {
 
-	dirtyMap := sync.Map{}
+	tempMap := sync.Map{}
 	if fh.file != nil {
 		var fields Fields
-
 		scanner := bufio.NewScanner(fh.file)
 		for scanner.Scan() {
 			err := json.Unmarshal(scanner.Bytes(), &fields)
 			if err != nil {
 				return nil
 			}
-			dirtyMap.LoadOrStore(fields.ShortKey, fields.OriginalURL)
+			tempMap.LoadOrStore(fields.ShortKey, fields.OriginalURL)
 		}
 	}
-
-	return &dirtyMap
+	return &tempMap
 }

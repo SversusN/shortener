@@ -15,9 +15,9 @@ type MapStorage struct {
 }
 
 func NewStorage(helper utils.FileHelper) *MapStorage {
-	dirtyMap := helper.ReadFile()
+	tempMap := helper.ReadFile()
 	return &MapStorage{
-		data:   dirtyMap,
+		data:   tempMap,
 		helper: &helper,
 	}
 }
