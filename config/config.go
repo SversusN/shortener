@@ -50,7 +50,7 @@ func NewConfig() (c *Config) {
 	//	c.FlagAddress = envFilePath
 	//}
 	//может быть ""
-	c.FlagAddress = os.Getenv("FILE_STORAGE_PATH")
+	c.FlagFilePath = os.Getenv("FILE_STORAGE_PATH")
 
 	return c
 }

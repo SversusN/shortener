@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
@@ -53,7 +52,7 @@ func (a App) Run() {
 	r := a.CreateRouter(*a.Handlers)
 
 	//go client.GetClient("http://" + a.Config.FlagAddress)
-	fmt.Printf("running on %s\n", a.Config.FlagAddress)
+	log.Printf("running on %s\n", a.Config.FlagAddress)
 	log.Fatal(
 		http.ListenAndServe(a.Config.FlagAddress, r), "упали...")
 }

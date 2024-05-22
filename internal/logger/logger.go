@@ -47,12 +47,6 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 
 func (l ServerLogger) LoggingMW() func(http.Handler) http.Handler {
 	sl := *l.logger.Sugar()
-	defer func(logger *zap.Logger) {
-		err := logger.Sync()
-		if err != nil {
-			sl.Info("Error syncing logger", zap.Error(err))
-		}
-	}(l.logger)
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, req *http.Request) {
 			defer func() {
