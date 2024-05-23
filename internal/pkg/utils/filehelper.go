@@ -22,6 +22,7 @@ type FileHelper struct {
 }
 
 // возвращаем хелпер или ошибку, чтобы выключить сохранение в файл
+
 func NewFileHelper(filename string) (*FileHelper, error) {
 	if filename == "" {
 		return nil, errors.New("filename is empty, no store tempdb")
