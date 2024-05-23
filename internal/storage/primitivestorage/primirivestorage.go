@@ -43,8 +43,17 @@ func (m *MapStorage) SetURL(id string, originalURL string) error {
 		log.Println("key is already in the storage")
 	} else {
 		if m.helper != nil {
-			m.helper.WriteFile(originalURL, id)
+			m.helper.WriteFile(lenSyncMap(m.data), originalURL, id)
 		}
 	}
 	return nil
+}
+
+func lenSyncMap(m *sync.Map) int {
+	var i int
+	m.Range(func(k, v interface{}) bool {
+		i++
+		return true
+	})
+	return i
 }

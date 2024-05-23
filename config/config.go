@@ -50,7 +50,9 @@ func NewConfig() (c *Config) {
 	//	c.FlagAddress = envFilePath
 	//}
 	//может быть ""
-	c.FlagFilePath = os.Getenv("FILE_STORAGE_PATH")
+	if envFilePath, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
+		c.FlagFilePath = envFilePath
+	}
 
 	return c
 }

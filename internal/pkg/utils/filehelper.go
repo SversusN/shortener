@@ -10,6 +10,7 @@ import (
 )
 
 type Fields struct {
+	UUID        int    `json:"uuid"`
 	OriginalURL string `json:"original_url"`
 	ShortKey    string `json:"short_url"`
 }
@@ -31,8 +32,8 @@ func NewFileHelper(filename string) (*FileHelper, error) {
 	}
 	return &FileHelper{file: file}, nil
 }
-func (fh FileHelper) WriteFile(originalURL string, shortKey string) {
-	t := Fields{OriginalURL: originalURL, ShortKey: shortKey}
+func (fh FileHelper) WriteFile(uuid int, originalURL string, shortKey string) {
+	t := Fields{UUID: uuid, OriginalURL: originalURL, ShortKey: shortKey}
 	jt, _ := json.Marshal(t)
 	jt = append(jt, '\n')
 	_, err := fh.file.Write(jt)
