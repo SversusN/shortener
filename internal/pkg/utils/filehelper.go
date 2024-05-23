@@ -4,9 +4,10 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
-	"github.com/SversusN/shortener/config"
 	"os"
 	"sync"
+
+	"github.com/SversusN/shortener/config"
 )
 
 type Fields struct {

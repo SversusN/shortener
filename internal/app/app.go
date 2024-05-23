@@ -26,8 +26,8 @@ type App struct {
 
 func New() *App {
 	cfg := config.NewConfig()
-	fh, fherr := utils.NewFileHelper(cfg.FlagFilePath)
-	ns := primitivestorage.NewStorage(fh, fherr)
+	fh, err := utils.NewFileHelper(cfg.FlagFilePath)
+	ns := primitivestorage.NewStorage(fh, err)
 	nh := handlers.NewHandlers(cfg, ns)
 	lg := logger.CreateLogger(zap.NewAtomicLevelAt(zap.InfoLevel)) //Хардкод TODO
 	return &App{cfg, ns, nh, lg, fh}
