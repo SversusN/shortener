@@ -19,6 +19,7 @@ type Fields struct {
 type FileHelper struct {
 	file *os.File
 	c    *config.Config
+	mu   sync.Mutex //https://echorand.me/posts/go-file-mutex/#notes
 }
 
 // возвращаем хелпер или ошибку, чтобы выключить сохранение в файл
@@ -35,6 +36,8 @@ func NewFileHelper(filename string) (*FileHelper, error) {
 	return &FileHelper{file: file}, nil
 }
 func (fh FileHelper) WriteFile(uuid int, originalURL string, shortKey string) {
+	fh.mu.Lock()
+	defer fh.mu.Unlock()
 	t := Fields{UUID: uuid, OriginalURL: originalURL, ShortKey: shortKey}
 	jt, _ := json.Marshal(t)
 	jt = append(jt, '\n')
@@ -45,6 +48,8 @@ func (fh FileHelper) WriteFile(uuid int, originalURL string, shortKey string) {
 }
 
 func (fh FileHelper) ReadFile() *sync.Map {
+	fh.mu.Lock()
+	defer fh.mu.Unlock()
 	tempMap := sync.Map{}
 	if fh.file != nil {
 		var fields Fields
