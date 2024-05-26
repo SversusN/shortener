@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -18,12 +19,19 @@ type Handlers struct {
 	s   storage.Storage
 }
 
+type JSONRequest struct {
+	URL string `json:"url"`
+}
+type JSONResponse struct {
+	Result string `json:"result"`
+}
+
 func NewHandlers(cfg *config.Config, s storage.Storage) *Handlers {
 	return &Handlers{cfg, s}
 }
 
 func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
-	log.Printf("Request %s \n ", req.Method)
+	//log.Printf("Request %s \n ", req.Method)
 	originalURL, err := io.ReadAll(req.Body)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -49,7 +57,7 @@ func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h Handlers) HandlerGet(res http.ResponseWriter, req *http.Request) {
-	log.Printf("Request %s \n ", req.Method)
+	//log.Printf("Request %s \n ", req.Method)
 	key := chi.URLParam(req, "shortKey")
 	if key == "" {
 		http.Error(res, "Shortened key is missing", http.StatusBadRequest)
@@ -62,4 +70,31 @@ func (h Handlers) HandlerGet(res http.ResponseWriter, req *http.Request) {
 	}
 	res.Header().Set("Location", originalURL)
 	res.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
+	b, err := io.ReadAll(req.Body)
+	if err != nil {
+		return
+	}
+	var reqBody JSONRequest
+	if err = json.Unmarshal(b, &reqBody); err != nil {
+		//не json
+		log.Printf("Error parsing JSON request body: %s", err)
+		res.WriteHeader(http.StatusBadRequest)
+	}
+	defer req.Body.Close()
+	key := utils.GenerateShortKey()
+	e := h.s.SetURL(key, reqBody.URL)
+	if e != nil {
+		log.Println("smth bad with data storage, mb double key ->", e)
+	}
+	shortURL := fmt.Sprint(h.cfg.FlagBaseAddress, "/", key)
+	resBody, e := json.Marshal(JSONResponse{Result: shortURL})
+	if e != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+	}
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusCreated)
+	res.Write(resBody)
 }

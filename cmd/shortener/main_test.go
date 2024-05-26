@@ -49,6 +49,7 @@ func TestRouter(t *testing.T) {
 		path         string
 		expectedCode int
 		Location     string
+		contentType  string
 	}{
 		{
 			name:         "Good Post request, 201 waiting",
@@ -73,13 +74,21 @@ func TestRouter(t *testing.T) {
 			name:         "Method on is not allowed",
 			method:       http.MethodPost,
 			path:         "/someBadKey",
-			expectedCode: http.StatusBadRequest,
+			expectedCode: http.StatusMethodNotAllowed,
 		},
 		{
 			name:         "No short key URL",
 			method:       http.MethodGet,
 			path:         "/",
 			expectedCode: http.StatusMethodNotAllowed,
+		},
+		{
+			name:         "Json serialize handler test",
+			method:       http.MethodPost,
+			body:         "{\"url\":\"http://example.com\"}",
+			path:         "/api/shorten",
+			expectedCode: http.StatusCreated,
+			contentType:  "application/json",
 		},
 	}
 
@@ -93,6 +102,9 @@ func TestRouter(t *testing.T) {
 
 			if tc.Location != "" {
 				assert.Equal(t, tc.Location, resp.Header.Get("Location"))
+			}
+			if tc.name == "Json serialize handler test" {
+				assert.Equal(t, tc.contentType, resp.Header.Get("Content-Type"))
 			}
 		})
 	}
