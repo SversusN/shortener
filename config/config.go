@@ -44,15 +44,9 @@ func NewConfig() (c *Config) {
 	if envBaseAddr := os.Getenv("BASE_URL"); envBaseAddr != "" {
 		c.FlagBaseAddress = envBaseAddr
 	}
-	//if envFilePath := os.Getenv("FILE_STORAGE_PATH"); envFilePath != "" {
-	//	c.FlagFilePath = envFilePath
-	//} else {
-	//	c.FlagAddress = envFilePath
-	//}
 	//может быть ""
 	if envFilePath, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
 		c.FlagFilePath = envFilePath
 	}
-
 	return c
 }

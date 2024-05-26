@@ -11,7 +11,6 @@ import (
 type MapStorage struct {
 	data   *sync.Map
 	helper *utils.FileHelper
-	//data map[string]string
 }
 
 // хелпер межет придти nil

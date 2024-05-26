@@ -35,7 +35,6 @@ func New() *App {
 
 func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 	r := chi.NewRouter()
-	//r.Use(mw.New(r))
 	r.Use(a.Logger.LoggingMW())
 	r.Use(mw.GzipMiddleware)
 	r.Route("/", func(r chi.Router) {
@@ -50,8 +49,6 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 
 func (a App) Run() {
 	r := a.CreateRouter(*a.Handlers)
-
-	//go client.GetClient("http://" + a.Config.FlagAddress)
 	log.Printf("running on %s\n", a.Config.FlagAddress)
 	log.Fatal(
 		http.ListenAndServe(a.Config.FlagAddress, r), "упали...")
