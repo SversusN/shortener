@@ -3,15 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"log"
-	"net/http"
-
-	"github.com/go-chi/chi/v5"
-
 	"github.com/SversusN/shortener/config"
 	"github.com/SversusN/shortener/internal/pkg/utils"
 	"github.com/SversusN/shortener/internal/storage/storage"
+	"github.com/go-chi/chi/v5"
+	"io"
+	"log"
+	"net/http"
 )
 
 type Handlers struct {
@@ -97,4 +95,21 @@ func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusCreated)
 	res.Write(resBody)
+}
+
+func (h Handlers) HandlerDBPing(res http.ResponseWriter, req *http.Request) {
+	pinger, ok := h.s.(storage.Pinger)
+	if !ok {
+		http.Error(res, "No DB to ping , sorry...", http.StatusBadRequest)
+		return
+	}
+	result := pinger.Ping()
+	res.Header().Set("Content-Type", "text/plain")
+	if result == nil {
+		res.WriteHeader(http.StatusOK)
+		res.Write([]byte("OK ping"))
+	} else {
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Write([]byte("BAD ping"))
+	}
 }
