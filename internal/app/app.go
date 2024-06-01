@@ -33,7 +33,7 @@ func New() *App {
 	if cfg.DataBaseDSN == "" {
 		ns = primitivestorage.NewStorage(fh, err)
 	} else {
-		ns, err = dbstorage.NewDb(cfg.DataBaseDSN)
+		ns, err = dbstorage.NewDB(cfg.DataBaseDSN)
 		if err != nil {
 			log.Fatalln("Failed to connect to database", zap.Error(err))
 		}

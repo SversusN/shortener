@@ -12,7 +12,7 @@ type PostgresDB struct {
 	db *sql.DB
 }
 
-func NewDb(connectionString string) (*PostgresDB, error) {
+func NewDB(connectionString string) (*PostgresDB, error) {
 	db, err := sql.Open("pgx", connectionString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open connection to postgresql: %w", err)
