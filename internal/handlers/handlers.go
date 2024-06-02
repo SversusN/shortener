@@ -95,8 +95,9 @@ func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 			log.Println("smth bad with data storage, mb double key ->", e)
 		}
 		shortURL = fmt.Sprint(h.cfg.FlagBaseAddress, "/", key)
+	} else {
+		shortURL = fmt.Sprint(h.cfg.FlagBaseAddress, "/", result)
 	}
-	shortURL = fmt.Sprint(h.cfg.FlagBaseAddress, "/", result)
 	resBody, e := json.Marshal(JSONResponse{Result: shortURL})
 	if e != nil {
 		res.WriteHeader(http.StatusInternalServerError)
