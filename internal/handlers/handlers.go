@@ -36,16 +36,20 @@ func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 		log.Printf("Error parsing URL %s", err)
 		return
 	}
-
 	if len(originalURL) > 0 {
+		var shortURL string
+		result, err := h.s.GetKey(string(originalURL))
 		//key := base64.StdEncoding.EncodeToString(originalURL) //слеши в base64 ломают url
-		key := utils.GenerateShortKey()
-		e := h.s.SetURL(key, string(originalURL))
-		if e != nil {
-			log.Println("smth bad with data storage, mb double key ->", e)
+		if err != nil {
+			key := utils.GenerateShortKey()
+			e := h.s.SetURL(key, string(originalURL))
+			if e != nil {
+				log.Println("smth bad with data storage, mb double key ->", e)
+			}
+			shortURL = fmt.Sprint(h.cfg.FlagBaseAddress, "/", key)
+		} else {
+			shortURL = fmt.Sprint(h.cfg.FlagBaseAddress, "/", result)
 		}
-		shortURL := fmt.Sprint(h.cfg.FlagBaseAddress, "/", key)
-
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
 		res.Write([]byte(shortURL))
@@ -82,12 +86,17 @@ func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusBadRequest)
 	}
 	defer req.Body.Close()
-	key := utils.GenerateShortKey()
-	e := h.s.SetURL(key, reqBody.URL)
-	if e != nil {
-		log.Println("smth bad with data storage, mb double key ->", e)
+	result, err := h.s.GetKey(reqBody.URL)
+	var shortURL string
+	if err != nil {
+		key := utils.GenerateShortKey()
+		e := h.s.SetURL(key, reqBody.URL)
+		if e != nil {
+			log.Println("smth bad with data storage, mb double key ->", e)
+		}
+		shortURL = fmt.Sprint(h.cfg.FlagBaseAddress, "/", key)
 	}
-	shortURL := fmt.Sprint(h.cfg.FlagBaseAddress, "/", key)
+	shortURL = fmt.Sprint(h.cfg.FlagBaseAddress, "/", result)
 	resBody, e := json.Marshal(JSONResponse{Result: shortURL})
 	if e != nil {
 		res.WriteHeader(http.StatusInternalServerError)

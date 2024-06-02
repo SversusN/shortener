@@ -1,6 +1,7 @@
 package dbstorage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -17,12 +18,7 @@ func NewDB(connectionString string) (*PostgresDB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open connection to postgresql: %w", err)
 	}
-	//defer func(db *sql.DB) {
-	//	err := db.Close()
-	//	if err != nil {
-	//		log.Fatalf("failed to close connection to postgresql: %w", err)
-	//	}
-	//}(db)
+
 	err = db.Ping()
 	if err != nil {
 		err := db.Close()
@@ -30,6 +26,10 @@ func NewDB(connectionString string) (*PostgresDB, error) {
 			return nil, fmt.Errorf("failed to close PostgreSQL connection after db.Ping: %w", err)
 		}
 		return nil, fmt.Errorf("failed to ping PostgreSQL connection: %w", err)
+	}
+	_, err = db.ExecContext(context.Background(), "CREATE TABLE IF NOT EXISTS URLS (short_url varchar(100), original_url varchar(1000))")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create PostgreSQL table: %w", err)
 	}
 
 	return &PostgresDB{
@@ -48,11 +48,39 @@ func (pg *PostgresDB) Close() {
 }
 
 func (pg *PostgresDB) GetURL(id string) (string, error) {
-	return id, nil
+	query := "SELECT original_url FROM URLS WHERE short_url=$1"
+	row := pg.db.QueryRowContext(context.Background(), query, id)
+	var originalURL string
+	err := row.Scan(&originalURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to query short URL: %w", err)
+	}
+	return originalURL, nil
 }
 
 func (pg *PostgresDB) SetURL(id string, targetURL string) error {
+	query := "INSERT INTO URLS (short_url, original_url) VALUES ($1, $2)"
+	_, err := pg.db.ExecContext(context.Background(), query, id, targetURL)
+	if err != nil {
+		return fmt.Errorf("failed to insert URL: %w", err)
+	}
 	return nil
+}
+
+func (pg *PostgresDB) GetKey(targetURL string) (string, error) {
+	var originalURL string
+	rowExist := pg.db.QueryRowContext(
+		context.Background(),
+		`SELECT short_url FROM URLS WHERE original_url=$1 LIMIT 1`,
+		targetURL)
+	err := rowExist.Scan(&originalURL)
+	if err != nil {
+		return "", err
+	}
+	if originalURL == "" {
+		return "", fmt.Errorf("nothing found for short URL")
+	}
+	return originalURL, nil
 }
 
 func (pg *PostgresDB) Ping() error {
