@@ -62,6 +62,23 @@ func (m *MapStorage) SetUrlBatch(c context.Context, u map[string]string) error {
 	}
 	return nil
 }
+func (m *MapStorage) GetKey(url string) (string, error) {
+	var storedKey string
+	var ok bool
+	m.data.Range(func(key, value interface{}) bool {
+		if value == url {
+			storedKey = key.(string)
+			ok = true
+			return true
+		}
+		ok = false
+		return false
+	})
+	if ok {
+		return storedKey, nil
+	}
+	return "", errors.New("key not found")
+}
 
 func lenSyncMap(m *sync.Map) int {
 	var i int

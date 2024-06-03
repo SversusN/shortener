@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/SversusN/shortener/internal/storage/dbstorage"
 	"log"
 	"net/http"
 
@@ -25,9 +26,19 @@ type App struct {
 }
 
 func New() *App {
+	var ns storage.Storage
 	cfg := config.NewConfig()
 	fh, err := utils.NewFileHelper(cfg.FlagFilePath)
-	ns := primitivestorage.NewStorage(fh, err)
+	//DB
+	if cfg.DataBaseDSN == "" {
+		ns = primitivestorage.NewStorage(fh, err)
+	} else {
+		ns, err = dbstorage.NewDB(cfg.DataBaseDSN)
+		if err != nil {
+			log.Fatalln("Failed to connect to database", zap.Error(err))
+		}
+	}
+
 	nh := handlers.NewHandlers(cfg, ns)
 	lg := logger.CreateLogger(zap.NewAtomicLevelAt(zap.InfoLevel)) //Хардкод TODO
 	return &App{cfg, ns, nh, lg, fh}
@@ -40,6 +51,7 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", hnd.HandlerPost)
 		r.Get("/{shortKey}", hnd.HandlerGet)
+		r.Get("/ping", hnd.HandlerDBPing)
 		r.Route("/api", func(r chi.Router) {
 			r.Post("/shorten", hnd.HandlerJSONPost)
 			r.Post("/shorten/batch", hnd.HandlerJSONPostBatch)

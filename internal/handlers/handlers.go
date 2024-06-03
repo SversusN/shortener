@@ -4,19 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-<<<<<<< Updated upstream
-=======
-	"github.com/go-chi/chi/v5"
->>>>>>> Stashed changes
 	"io"
 	"log"
 	"net/http"
 
-<<<<<<< Updated upstream
 	"github.com/go-chi/chi/v5"
 
-=======
->>>>>>> Stashed changes
 	"github.com/SversusN/shortener/config"
 	"github.com/SversusN/shortener/internal/pkg/utils"
 	"github.com/SversusN/shortener/internal/storage/storage"
@@ -58,15 +51,8 @@ func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 		log.Printf("Error parsing URL %s", err)
 		return
 	}
-
 	if len(originalURL) > 0 {
-<<<<<<< Updated upstream
 		//key := base64.StdEncoding.EncodeToString(originalURL) //слеши в base64 ломают url
-		key := utils.GenerateShortKey()
-		e := h.s.SetURL(key, string(originalURL))
-		if e != nil {
-			log.Println("smth bad with data storage, mb double key ->", e)
-=======
 		var shortURL string
 		result, err := h.s.GetKey(string(originalURL))
 		if err != nil {
@@ -75,12 +61,10 @@ func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 			if e != nil {
 				log.Println("smth bad with data storage, mb double key ->", e)
 			}
-			shortURL = h.getFullUrl(key) //fmt.Sprint(h.cfg.FlagBaseAddress, "/", key)
+			shortURL = h.getFullUrl(key)
 		} else {
-			shortURL = h.getFullUrl(result) //fmt.Sprint(h.cfg.FlagBaseAddress, "/", result)
->>>>>>> Stashed changes
+			shortURL = h.getFullUrl(result)
 		}
-		shortURL := fmt.Sprint(h.cfg.FlagBaseAddress, "/", key)
 
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
@@ -131,8 +115,6 @@ func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusCreated)
 	res.Write(resBody)
 }
-<<<<<<< Updated upstream
-=======
 
 func (h Handlers) HandlerDBPing(res http.ResponseWriter, req *http.Request) {
 	pinger, ok := h.s.(storage.Pinger)
@@ -191,4 +173,3 @@ func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Reques
 	res.WriteHeader(http.StatusCreated)
 	res.Write(resBody)
 }
->>>>>>> Stashed changes
