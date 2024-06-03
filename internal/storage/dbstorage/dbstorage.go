@@ -66,7 +66,7 @@ func (pg *PostgresDB) SetURL(id string, targetURL string) error {
 	return nil
 }
 
-func (pg *PostgresDB) SetUrlBatch(ctx context.Context, u map[string]string) error {
+func (pg *PostgresDB) SetURLBatch(ctx context.Context, u map[string]string) error {
 	tx, err := pg.db.Begin()
 	if err != nil {
 		return err

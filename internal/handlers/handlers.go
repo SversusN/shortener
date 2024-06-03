@@ -39,7 +39,7 @@ func NewHandlers(cfg *config.Config, s storage.Storage) *Handlers {
 	return &Handlers{cfg, s}
 }
 
-func (h Handlers) getFullUrl(result string) string {
+func (h Handlers) getFullURL(result string) string {
 	return fmt.Sprint(h.cfg.FlagBaseAddress, "/", result)
 }
 
@@ -61,9 +61,9 @@ func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 			if e != nil {
 				log.Println("smth bad with data storage, mb double key ->", e)
 			}
-			shortURL = h.getFullUrl(key)
+			shortURL = h.getFullURL(key)
 		} else {
-			shortURL = h.getFullUrl(result)
+			shortURL = h.getFullURL(result)
 		}
 
 		res.Header().Set("Content-Type", "text/plain")
@@ -149,11 +149,11 @@ func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Reques
 		var rs JSONBatchResponse
 		key, e := h.s.GetKey(r.OriginalURL)
 		if e == nil {
-			rs.ShortenedURL = h.getFullUrl(key)
+			rs.ShortenedURL = h.getFullURL(key)
 		} else {
 			newKey := utils.GenerateShortKey()
 			saveUrls[r.OriginalURL] = newKey
-			rs.ShortenedURL = h.getFullUrl(newKey)
+			rs.ShortenedURL = h.getFullURL(newKey)
 			if err != nil {
 				http.Error(res, "No DB to ping , sorry...", http.StatusInternalServerError)
 			}
@@ -161,7 +161,7 @@ func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Reques
 		rs.CorrelationID = r.CorrelationID
 		respBody = append(respBody, rs)
 	}
-	err = h.s.SetUrlBatch(ctx, saveUrls)
+	err = h.s.SetURLBatch(ctx, saveUrls)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}

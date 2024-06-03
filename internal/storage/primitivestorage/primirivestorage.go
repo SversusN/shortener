@@ -49,7 +49,7 @@ func (m *MapStorage) SetURL(id string, originalURL string) error {
 	return nil
 }
 
-func (m *MapStorage) SetUrlBatch(c context.Context, u map[string]string) error {
+func (m *MapStorage) SetURLBatch(c context.Context, u map[string]string) error {
 	for s := range u {
 		_, ok := m.data.LoadOrStore(s, u[s])
 		if ok {
