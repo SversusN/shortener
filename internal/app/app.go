@@ -42,6 +42,7 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 		r.Get("/{shortKey}", hnd.HandlerGet)
 		r.Route("/api", func(r chi.Router) {
 			r.Post("/shorten", hnd.HandlerJSONPost)
+			r.Post("/shorten/batch", hnd.HandlerJSONPostBatch)
 		})
 	})
 	return r

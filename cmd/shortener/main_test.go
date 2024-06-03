@@ -1,15 +1,17 @@
 package main
 
 import (
-	"github.com/SversusN/shortener/internal/app"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/SversusN/shortener/internal/app"
 )
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body string) (*http.Response, string) {
@@ -90,6 +92,14 @@ func TestRouter(t *testing.T) {
 			expectedCode: http.StatusCreated,
 			contentType:  "application/json",
 		},
+		{
+			name:         "Json batch handler test",
+			method:       http.MethodPost,
+			body:         "[\n{\n\"correlation_id\": \"1\",\n        \"original_url\": \"http://example.com\"\n    }\n\n] ",
+			path:         "/api/shorten/batch",
+			expectedCode: http.StatusCreated,
+			contentType:  "application/json",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -104,6 +114,9 @@ func TestRouter(t *testing.T) {
 				assert.Equal(t, tc.Location, resp.Header.Get("Location"))
 			}
 			if tc.name == "Json serialize handler test" {
+				assert.Equal(t, tc.contentType, resp.Header.Get("Content-Type"))
+			}
+			if tc.name == "Json batch handler test" {
 				assert.Equal(t, tc.contentType, resp.Header.Get("Content-Type"))
 			}
 		})

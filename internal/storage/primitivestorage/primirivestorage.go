@@ -1,6 +1,7 @@
 package primitivestorage
 
 import (
+	"context"
 	"errors"
 	"log"
 	"sync"
@@ -43,6 +44,20 @@ func (m *MapStorage) SetURL(id string, originalURL string) error {
 	} else {
 		if m.helper != nil {
 			m.helper.WriteFile(lenSyncMap(m.data), originalURL, id)
+		}
+	}
+	return nil
+}
+
+func (m *MapStorage) SetUrlBatch(c context.Context, u map[string]string) error {
+	for s := range u {
+		_, ok := m.data.LoadOrStore(s, u[s])
+		if ok {
+			log.Println("key is already in the storage")
+		} else {
+			if m.helper != nil {
+				m.helper.WriteFile(lenSyncMap(m.data), s, u[s])
+			}
 		}
 	}
 	return nil
