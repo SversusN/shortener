@@ -44,7 +44,6 @@ func (h Handlers) getFullURL(result string) string {
 }
 
 func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
-	//log.Printf("Request %s \n ", req.Method)
 	originalURL, err := io.ReadAll(req.Body)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -52,22 +51,21 @@ func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if len(originalURL) > 0 {
-		//key := base64.StdEncoding.EncodeToString(originalURL) //слеши в base64 ломают url
 		var shortURL string
 		result, err := h.s.GetKey(string(originalURL))
 		if err != nil {
 			key := utils.GenerateShortKey()
 			e := h.s.SetURL(key, string(originalURL))
 			if e != nil {
-				log.Println("smth bad with data storage, mb double key ->", e)
+				log.Println("smth bad with data storage ->", e)
 			}
 			shortURL = h.getFullURL(key)
+			res.WriteHeader(http.StatusCreated)
 		} else {
 			shortURL = h.getFullURL(result)
+			res.WriteHeader(http.StatusConflict)
 		}
-
 		res.Header().Set("Content-Type", "text/plain")
-		res.WriteHeader(http.StatusCreated)
 		res.Write([]byte(shortURL))
 	} else {
 		res.WriteHeader(http.StatusBadRequest)
@@ -92,27 +90,86 @@ func (h Handlers) HandlerGet(res http.ResponseWriter, req *http.Request) {
 func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 	b, err := io.ReadAll(req.Body)
 	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		log.Printf("Error parsing URLs %s", err)
 		return
 	}
-	var reqBody JSONRequest
+	var (
+		reqBody JSONRequest
+		resBody JSONResponse
+		key     string
+	)
 	if err = json.Unmarshal(b, &reqBody); err != nil {
-		//не json
 		log.Printf("Error parsing JSON request body: %s", err)
 		res.WriteHeader(http.StatusBadRequest)
 	}
 	defer req.Body.Close()
-	key := utils.GenerateShortKey()
-	e := h.s.SetURL(key, reqBody.URL)
-	if e != nil {
-		log.Println("smth bad with data storage, mb double key ->", e)
+	key, err = h.s.GetKey(reqBody.URL)
+	if err == nil {
+		res.WriteHeader(http.StatusConflict)
+		resBody.Result = h.getFullURL(key)
+	} else {
+		key = utils.GenerateShortKey()
+		e := h.s.SetURL(key, reqBody.URL)
+		if e != nil {
+			log.Println("smth bad with data storage, mb double key ->", e)
+		}
+		resBody.Result = h.getFullURL(key)
+		res.WriteHeader(http.StatusCreated)
 	}
-	shortURL := fmt.Sprint(h.cfg.FlagBaseAddress, "/", key)
-	resBody, e := json.Marshal(JSONResponse{Result: shortURL})
-	if e != nil {
+	resJson, e := json.Marshal(&resBody)
+	if e == nil {
 		res.WriteHeader(http.StatusInternalServerError)
 	}
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusCreated)
+	res.Write(resJson)
+}
+
+func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Request) {
+	b, err := io.ReadAll(req.Body)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		log.Printf("Error parsing URLs %s", err)
+		return
+	}
+	ctx := context.Background()
+	defer req.Body.Close()
+	var reqBody []JSONBatchRequest
+	var respBody []JSONBatchResponse
+	saveUrls := make(map[string]string)
+	if err = json.Unmarshal(b, &reqBody); err != nil {
+		http.Error(res, "Bad JSON request...", http.StatusBadRequest)
+	}
+	for _, r := range reqBody {
+		var rs JSONBatchResponse
+		key, err := h.s.GetKey(r.OriginalURL)
+		if err == nil {
+			rs.ShortenedURL = h.getFullURL(key)
+			res.WriteHeader(http.StatusConflict)
+		} else {
+			newKey := utils.GenerateShortKey()
+			saveUrls[newKey] = r.OriginalURL
+			rs.ShortenedURL = h.getFullURL(newKey)
+			res.WriteHeader(http.StatusCreated)
+		}
+		rs.CorrelationID = r.CorrelationID
+		respBody = append(respBody, rs)
+	}
+	if len(saveUrls) > 0 {
+		err := h.s.SetURLBatch(ctx, saveUrls)
+		//Если 2 одинаковых ссылки в пакете - транзакция упадет
+		if err != nil {
+			res.WriteHeader(http.StatusConflict)
+			http.Error(res, err.Error(), http.StatusConflict)
+			return
+		}
+	}
+	resBody, err := json.Marshal(&respBody)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+	}
+	res.Header().Set("Content-Type", "application/json")
 	res.Write(resBody)
 }
 
@@ -131,45 +188,4 @@ func (h Handlers) HandlerDBPing(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusInternalServerError)
 		res.Write([]byte("BAD ping"))
 	}
-}
-
-func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Request) {
-	b, err := io.ReadAll(req.Body)
-	if err != nil {
-		return
-	}
-	ctx := context.Background()
-	var reqBody []JSONBatchRequest
-	var respBody []JSONBatchResponse
-	saveUrls := make(map[string]string)
-	if err = json.Unmarshal(b, &reqBody); err != nil {
-		http.Error(res, "Bad JSON request...", http.StatusBadRequest)
-	}
-	for _, r := range reqBody {
-		var rs JSONBatchResponse
-		key, e := h.s.GetKey(r.OriginalURL)
-		if e == nil {
-			rs.ShortenedURL = h.getFullURL(key)
-		} else {
-			newKey := utils.GenerateShortKey()
-			saveUrls[r.OriginalURL] = newKey
-			rs.ShortenedURL = h.getFullURL(newKey)
-			if err != nil {
-				http.Error(res, "No DB to ping , sorry...", http.StatusInternalServerError)
-			}
-		}
-		rs.CorrelationID = r.CorrelationID
-		respBody = append(respBody, rs)
-	}
-	err = h.s.SetURLBatch(ctx, saveUrls)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
-	resBody, err := json.Marshal(&respBody)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-	}
-	res.Header().Set("Content-Type", "application/json")
-	res.WriteHeader(http.StatusCreated)
-	res.Write(resBody)
 }

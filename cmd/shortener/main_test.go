@@ -100,6 +100,14 @@ func TestRouter(t *testing.T) {
 			expectedCode: http.StatusCreated,
 			contentType:  "application/json",
 		},
+		{
+			name:         "Json batch doubled handler test",
+			method:       http.MethodPost,
+			body:         "[\n{\n\"correlation_id\": \"1\",\n        \"original_url\": \"http://example.com\"\n    },\n\n\n{\n\"correlation_id\": \"1\",\n        \"original_url\": \"http://example.com\"\n    }] ",
+			path:         "/api/shorten/batch",
+			expectedCode: http.StatusConflict,
+			contentType:  "application/json",
+		},
 	}
 
 	for _, tc := range testCases {

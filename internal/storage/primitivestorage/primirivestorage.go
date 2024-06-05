@@ -71,7 +71,7 @@ func (m *MapStorage) GetKey(url string) (string, error) {
 			ok = true
 			return true
 		}
-		ok = false
+		ok = true
 		return false
 	})
 	if ok {

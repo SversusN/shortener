@@ -3,6 +3,7 @@ package dbstorage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 
@@ -27,7 +28,8 @@ func NewDB(connectionString string) (*PostgresDB, error) {
 		}
 		return nil, fmt.Errorf("failed to ping PostgreSQL connection: %w", err)
 	}
-	_, err = db.ExecContext(context.Background(), "CREATE TABLE IF NOT EXISTS URLS (short_url varchar(100), original_url varchar(1000))")
+	_, err = db.ExecContext(context.Background(), "CREATE TABLE IF NOT EXISTS URLS (short_url varchar(100), original_url varchar(1000));"+
+		"CREATE UNIQUE INDEX IF NOT EXISTS original_url_idx ON URLS (original_url);")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PostgreSQL table: %w", err)
 	}
@@ -46,9 +48,9 @@ func (pg *PostgresDB) Close() {
 	}
 }
 
-func (pg *PostgresDB) GetURL(id string) (string, error) {
+func (pg *PostgresDB) GetURL(shortURL string) (string, error) {
 	query := "SELECT original_url FROM URLS WHERE short_url=$1"
-	row := pg.db.QueryRowContext(context.Background(), query, id)
+	row := pg.db.QueryRowContext(context.Background(), query, shortURL)
 	var originalURL string
 	err := row.Scan(&originalURL)
 	if err != nil {
@@ -57,9 +59,9 @@ func (pg *PostgresDB) GetURL(id string) (string, error) {
 	return originalURL, nil
 }
 
-func (pg *PostgresDB) SetURL(id string, targetURL string) error {
+func (pg *PostgresDB) SetURL(id string, originalUrl string) error {
 	query := "INSERT INTO URLS (short_url, original_url) VALUES ($1, $2)"
-	_, err := pg.db.ExecContext(context.Background(), query, id, targetURL)
+	_, err := pg.db.ExecContext(context.Background(), query, id, originalUrl)
 	if err != nil {
 		return fmt.Errorf("failed to insert URL: %w", err)
 	}
@@ -75,9 +77,10 @@ func (pg *PostgresDB) SetURLBatch(ctx context.Context, u map[string]string) erro
 	stmt, _ := tx.PrepareContext(ctx, query)
 	defer stmt.Close()
 	for s := range u {
-		_, err := stmt.ExecContext(context.Background(), u[s], s)
+		_, err := stmt.ExecContext(context.Background(), s, u[s])
 		if err != nil {
-			return tx.Rollback()
+			tx.Rollback()
+			return errors.New("Doubled key in batch. Not allowed")
 		}
 	}
 	err = tx.Commit()
@@ -87,20 +90,20 @@ func (pg *PostgresDB) SetURLBatch(ctx context.Context, u map[string]string) erro
 	return nil
 }
 
-func (pg *PostgresDB) GetKey(targetURL string) (string, error) {
-	var originalURL string
+func (pg *PostgresDB) GetKey(originalURL string) (string, error) {
+	var storedURL string
 	rowExist := pg.db.QueryRowContext(
 		context.Background(),
 		`SELECT short_url FROM URLS WHERE original_url=$1 LIMIT 1`,
-		targetURL)
-	err := rowExist.Scan(&originalURL)
+		originalURL)
+	err := rowExist.Scan(&storedURL)
 	if err != nil {
 		return "", err
 	}
 	if originalURL == "" {
-		return "", fmt.Errorf("nothing found for short URL")
+		return "", errors.New("nothing found for short URL")
 	}
-	return originalURL, nil
+	return storedURL, nil
 }
 
 func (pg *PostgresDB) Ping() error {

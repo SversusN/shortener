@@ -35,10 +35,9 @@ func New() *App {
 	} else {
 		ns, err = dbstorage.NewDB(cfg.DataBaseDSN)
 		if err != nil {
-			log.Fatalln("Failed to connect to database", zap.Error(err))
+			log.Fatalln("Failed to connect to database", err)
 		}
 	}
-
 	nh := handlers.NewHandlers(cfg, ns)
 	lg := logger.CreateLogger(zap.NewAtomicLevelAt(zap.InfoLevel)) //Хардкод TODO
 	return &App{cfg, ns, nh, lg, fh}
