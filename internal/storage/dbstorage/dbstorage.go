@@ -59,9 +59,9 @@ func (pg *PostgresDB) GetURL(shortURL string) (string, error) {
 	return originalURL, nil
 }
 
-func (pg *PostgresDB) SetURL(id string, originalUrl string) error {
+func (pg *PostgresDB) SetURL(id string, originalURL string) error {
 	query := "INSERT INTO URLS (short_url, original_url) VALUES ($1, $2)"
-	_, err := pg.db.ExecContext(context.Background(), query, id, originalUrl)
+	_, err := pg.db.ExecContext(context.Background(), query, id, originalURL)
 	if err != nil {
 		return fmt.Errorf("failed to insert URL: %w", err)
 	}
@@ -77,10 +77,10 @@ func (pg *PostgresDB) SetURLBatch(ctx context.Context, u map[string]string) erro
 	stmt, _ := tx.PrepareContext(ctx, query)
 	defer stmt.Close()
 	for s := range u {
-		_, err := stmt.ExecContext(context.Background(), s, u[s])
-		if err != nil {
+		_, e := stmt.ExecContext(context.Background(), s, u[s])
+		if e != nil {
 			tx.Rollback()
-			return errors.New("Doubled key in batch. Not allowed")
+			return fmt.Errorf("failed to commit transaction: %w", e)
 		}
 	}
 	err = tx.Commit()

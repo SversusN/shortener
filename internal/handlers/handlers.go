@@ -117,13 +117,13 @@ func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 		resBody.Result = h.getFullURL(key)
 		res.WriteHeader(http.StatusCreated)
 	}
-	resJson, e := json.Marshal(&resBody)
+	resJSON, e := json.Marshal(&resBody)
 	if e == nil {
 		res.WriteHeader(http.StatusInternalServerError)
 	}
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusCreated)
-	res.Write(resJson)
+	res.Write(resJSON)
 }
 
 func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Request) {
