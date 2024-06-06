@@ -50,6 +50,7 @@ func (m *MapStorage) SetURL(id string, originalURL string) error {
 }
 
 func (m *MapStorage) SetURLBatch(c context.Context, u map[string]string) error {
+
 	for s := range u {
 		_, ok := m.data.LoadOrStore(s, u[s])
 		if ok {
@@ -71,7 +72,7 @@ func (m *MapStorage) GetKey(url string) (string, error) {
 			ok = true
 			return true
 		}
-		ok = true
+		ok = false
 		return false
 	})
 	if ok {

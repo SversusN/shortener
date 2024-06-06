@@ -123,7 +123,6 @@ func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 	if e == nil {
 		res.WriteHeader(http.StatusInternalServerError)
 	}
-	res.WriteHeader(http.StatusCreated)
 	res.Write(resJSON)
 }
 
@@ -161,9 +160,8 @@ func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Reques
 	}
 	if len(saveUrls) > 0 {
 		err := h.s.SetURLBatch(ctx, saveUrls)
-		//Если 2 одинаковых ссылки в пакете - транзакция упадет
+		//Если 2 одинаковых ссылки в пакете - транзакция БД упадет
 		if err != nil {
-			res.WriteHeader(http.StatusConflict)
 			http.Error(res, err.Error(), http.StatusConflict)
 			return
 		}

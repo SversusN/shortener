@@ -2,6 +2,8 @@ package main
 
 import (
 	"errors"
+	"github.com/SversusN/shortener/internal/handlers"
+	"github.com/SversusN/shortener/internal/storage/primitivestorage"
 	"io"
 	"log"
 	"net/http"
@@ -13,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/SversusN/shortener/internal/app"
-	"github.com/SversusN/shortener/internal/storage/primitivestorage"
 )
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body string) (*http.Response, string) {
@@ -22,7 +23,6 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
-
 	resp, err := ts.Client().Do(req)
 	require.NoError(t, err)
 	defer func(Body io.ReadCloser) {
@@ -41,11 +41,13 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 
 func TestRouter(t *testing.T) {
 	a := app.New()
-	ts := httptest.NewServer(a.CreateRouter(*a.Handlers))
-	//не портим базу
-	//a.Storage = nil
+	//хенлеры проверяем бне портим БД
+	a.Storage = nil
 	a.Storage = primitivestorage.NewStorage(nil, errors.New("dont need file"))
+	//Для хендлеров тоже мап
+	a.Handlers = handlers.NewHandlers(a.Config, a.Storage)
 	a.Storage.SetURL("sk", "http://example.com")
+	ts := httptest.NewServer(a.CreateRouter(*a.Handlers))
 
 	defer ts.Close()
 
@@ -105,14 +107,6 @@ func TestRouter(t *testing.T) {
 			expectedCode: http.StatusCreated,
 			contentType:  "application/json",
 		},
-		{
-			name:         "Json batch doubled handler test",
-			method:       http.MethodPost,
-			body:         "[\n{\n\"correlation_id\": \"1\",\n        \"original_url\": \"http://example.com\"\n    },\n\n\n{\n\"correlation_id\": \"1\",\n        \"original_url\": \"http://example.com\"\n    }] ",
-			path:         "/api/shorten/batch",
-			expectedCode: http.StatusConflict,
-			contentType:  "application/json",
-		},
 	}
 
 	for _, tc := range testCases {
@@ -134,5 +128,6 @@ func TestRouter(t *testing.T) {
 			}
 		})
 	}
-
+	//на всякий обнуляем конвеер
+	a = nil
 }
