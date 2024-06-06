@@ -106,6 +106,7 @@ func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	key, err = h.s.GetKey(reqBody.URL)
 	if err == nil {
+		res.Header().Set("Content-Type", "application/json")
 		res.WriteHeader(http.StatusConflict)
 		resBody.Result = h.getFullURL(key)
 	} else {
@@ -115,13 +116,13 @@ func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 			log.Println("smth bad with data storage, mb double key ->", e)
 		}
 		resBody.Result = h.getFullURL(key)
+		res.Header().Set("Content-Type", "application/json")
 		res.WriteHeader(http.StatusCreated)
 	}
 	resJSON, e := json.Marshal(&resBody)
 	if e == nil {
 		res.WriteHeader(http.StatusInternalServerError)
 	}
-	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusCreated)
 	res.Write(resJSON)
 }
@@ -146,11 +147,13 @@ func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Reques
 		key, err := h.s.GetKey(r.OriginalURL)
 		if err == nil {
 			rs.ShortenedURL = h.getFullURL(key)
+			res.Header().Set("Content-Type", "application/json")
 			res.WriteHeader(http.StatusConflict)
 		} else {
 			newKey := utils.GenerateShortKey()
 			saveUrls[newKey] = r.OriginalURL
 			rs.ShortenedURL = h.getFullURL(newKey)
+			res.Header().Set("Content-Type", "application/json")
 			res.WriteHeader(http.StatusCreated)
 		}
 		rs.CorrelationID = r.CorrelationID
@@ -169,7 +172,6 @@ func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Reques
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
-	res.Header().Set("Content-Type", "application/json")
 	res.Write(resBody)
 }
 

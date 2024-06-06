@@ -43,7 +43,7 @@ func TestRouter(t *testing.T) {
 	a := app.New()
 	ts := httptest.NewServer(a.CreateRouter(*a.Handlers))
 	//не портим базу
-	a.Storage = nil
+	//a.Storage = nil
 	a.Storage = primitivestorage.NewStorage(nil, errors.New("dont need file"))
 	a.Storage.SetURL("sk", "http://example.com")
 
@@ -61,7 +61,7 @@ func TestRouter(t *testing.T) {
 		{
 			name:         "Good Post request, 201 waiting",
 			method:       http.MethodPost,
-			body:         "http://example_example.com",
+			body:         "http://example_example2.com",
 			expectedCode: http.StatusCreated,
 		},
 		{
@@ -134,4 +134,5 @@ func TestRouter(t *testing.T) {
 			}
 		})
 	}
+
 }
