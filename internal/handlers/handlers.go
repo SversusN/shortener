@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -133,7 +132,6 @@ func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Reques
 		log.Printf("Error parsing URLs %s", err)
 		return
 	}
-	ctx := context.Background()
 	defer req.Body.Close()
 	var reqBody []JSONBatchRequest
 	var respBody []JSONBatchResponse
@@ -159,7 +157,7 @@ func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Reques
 		respBody = append(respBody, rs)
 	}
 	if len(saveUrls) > 0 {
-		err := h.s.SetURLBatch(ctx, saveUrls)
+		err := h.s.SetURLBatch(saveUrls)
 		//Если 2 одинаковых ссылки в пакете - транзакция БД упадет
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusConflict)
