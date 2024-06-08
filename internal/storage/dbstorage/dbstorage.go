@@ -11,10 +11,11 @@ import (
 )
 
 type PostgresDB struct {
-	db *sql.DB
+	db  *sql.DB
+	ctx context.Context
 }
 
-func NewDB(connectionString string) (*PostgresDB, error) {
+func NewDB(connectionString string, ctx context.Context) (*PostgresDB, error) {
 	db, err := sql.Open("pgx", connectionString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open connection to postgresql: %w", err)
@@ -28,13 +29,14 @@ func NewDB(connectionString string) (*PostgresDB, error) {
 		}
 		return nil, fmt.Errorf("failed to ping PostgreSQL connection: %w", err)
 	}
-	_, err = db.ExecContext(context.Background(), "CREATE TABLE IF NOT EXISTS URLS (short_url varchar(100), original_url varchar(1000));"+
+	_, err = db.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS URLS (short_url varchar(100), original_url varchar(1000));"+
 		"CREATE UNIQUE INDEX IF NOT EXISTS original_url_idx ON URLS (original_url);")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PostgreSQL table: %w", err)
 	}
 	return &PostgresDB{
-		db: db,
+		db:  db,
+		ctx: ctx,
 	}, nil
 }
 
@@ -50,7 +52,7 @@ func (pg *PostgresDB) Close() {
 
 func (pg *PostgresDB) GetURL(shortURL string) (string, error) {
 	query := "SELECT original_url FROM URLS WHERE short_url=$1"
-	row := pg.db.QueryRowContext(context.Background(), query, shortURL)
+	row := pg.db.QueryRowContext(pg.ctx, query, shortURL)
 	var originalURL string
 	err := row.Scan(&originalURL)
 	if err != nil {
@@ -61,23 +63,23 @@ func (pg *PostgresDB) GetURL(shortURL string) (string, error) {
 
 func (pg *PostgresDB) SetURL(id string, originalURL string) error {
 	query := "INSERT INTO URLS (short_url, original_url) VALUES ($1, $2)"
-	_, err := pg.db.ExecContext(context.Background(), query, id, originalURL)
+	_, err := pg.db.ExecContext(pg.ctx, query, id, originalURL)
 	if err != nil {
 		return fmt.Errorf("failed to insert URL: %w", err)
 	}
 	return nil
 }
 
-func (pg *PostgresDB) SetURLBatch(ctx context.Context, u map[string]string) error {
+func (pg *PostgresDB) SetURLBatch(u map[string]string) error {
 	tx, err := pg.db.Begin()
 	if err != nil {
 		return err
 	}
 	query := "INSERT INTO URLS (short_url, original_url) VALUES ($1, $2)"
-	stmt, _ := tx.PrepareContext(ctx, query)
+	stmt, _ := tx.PrepareContext(pg.ctx, query)
 	defer stmt.Close()
 	for s := range u {
-		_, e := stmt.ExecContext(context.Background(), s, u[s])
+		_, e := stmt.ExecContext(pg.ctx, s, u[s])
 		if e != nil {
 			tx.Rollback()
 			return fmt.Errorf("failed to commit transaction: %w", e)
@@ -93,7 +95,7 @@ func (pg *PostgresDB) SetURLBatch(ctx context.Context, u map[string]string) erro
 func (pg *PostgresDB) GetKey(originalURL string) (string, error) {
 	var storedURL string
 	rowExist := pg.db.QueryRowContext(
-		context.Background(),
+		pg.ctx,
 		`SELECT short_url FROM URLS WHERE original_url=$1 LIMIT 1`,
 		originalURL)
 	err := rowExist.Scan(&storedURL)

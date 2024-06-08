@@ -1,7 +1,6 @@
 package primitivestorage
 
 import (
-	"context"
 	"errors"
 	"log"
 	"sync"
@@ -14,7 +13,7 @@ type MapStorage struct {
 	helper *utils.FileHelper
 }
 
-// хелпер межет придти nil
+// NewStorage хелпер межет придти nil
 func NewStorage(helper *utils.FileHelper, err error) *MapStorage {
 	if err != nil {
 		return &MapStorage{
@@ -49,7 +48,7 @@ func (m *MapStorage) SetURL(id string, originalURL string) error {
 	return nil
 }
 
-func (m *MapStorage) SetURLBatch(c context.Context, u map[string]string) error {
+func (m *MapStorage) SetURLBatch(u map[string]string) error {
 
 	for s := range u {
 		_, ok := m.data.LoadOrStore(s, u[s])
