@@ -2,8 +2,6 @@ package main
 
 import (
 	"errors"
-	"github.com/SversusN/shortener/internal/handlers"
-	"github.com/SversusN/shortener/internal/storage/primitivestorage"
 	"io"
 	"log"
 	"net/http"
@@ -15,6 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/SversusN/shortener/internal/app"
+	"github.com/SversusN/shortener/internal/handlers"
+	"github.com/SversusN/shortener/internal/storage/primitivestorage"
 )
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body string) (*http.Response, string) {

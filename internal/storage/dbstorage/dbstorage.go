@@ -20,7 +20,6 @@ func NewDB(connectionString string, ctx context.Context) (*PostgresDB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open connection to postgresql: %w", err)
 	}
-
 	err = db.Ping()
 	if err != nil {
 		err := db.Close()
