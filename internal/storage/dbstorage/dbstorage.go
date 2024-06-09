@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/jackc/pgx/v5"
 	"log"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -62,7 +63,7 @@ func (pg *PostgresDB) GetURL(shortURL string) (string, error) {
 
 func (pg *PostgresDB) SetURL(shortURL string, originalURL string) error {
 	query := "INSERT INTO URLS (short_url, original_url) VALUES (@shortURL, @originalURL)"
-	_, err := pg.db.ExecContext(pg.ctx, query, sql.Named("shortURL", shortURL), sql.Named("originalURL", originalURL))
+	_, err := pg.db.ExecContext(pg.ctx, query, pgx.NamedArgs{"shortURL": shortURL, "originalURL": originalURL})
 	if err != nil {
 		return fmt.Errorf("failed to insert URL: %w", err)
 	}
