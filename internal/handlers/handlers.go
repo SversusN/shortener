@@ -146,8 +146,9 @@ func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Reques
 		var rs JSONBatchResponse
 		mapResp, err := h.s.SetURLBatch(saveUrls)
 		for s := range mapResp {
+			i := indexOfURL(mapResp[s], reqBody)
 			rs.ShortenedURL = h.getFullURL(s)
-			rs.CorrelationID = s
+			rs.CorrelationID = reqBody[i].CorrelationID
 			respBody = append(respBody, rs)
 		}
 		switch {
@@ -181,4 +182,13 @@ func (h Handlers) HandlerDBPing(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusInternalServerError)
 		res.Write([]byte("BAD ping"))
 	}
+}
+
+func indexOfURL(element string, data []JSONBatchRequest) int {
+	for k, v := range data {
+		if element == v.OriginalURL {
+			return k
+		}
+	}
+	return -1 //not found.
 }

@@ -84,6 +84,9 @@ func (pg *PostgresDB) SetURL(shortURL string, originalURL string) (string, error
 func (pg *PostgresDB) SetURLBatch(u map[string]string) (map[string]string, error) {
 	result := make(map[string]string)
 	tx, err := pg.db.Begin()
+	if err != nil {
+		tx.Rollback()
+	}
 	queryCheck := "SELECT short_url FROM URLS WHERE original_url=$1 LIMIT 1 FOR UPDATE"
 	query := "INSERT INTO URLS (short_url, original_url) VALUES ($1, $2)"
 	var possibleError error
