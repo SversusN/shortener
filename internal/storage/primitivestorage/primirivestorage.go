@@ -36,7 +36,7 @@ func (m *MapStorage) GetURL(id string) (string, error) {
 	return s, nil
 }
 
-func (m *MapStorage) SetURL(id string, originalURL string) error {
+func (m *MapStorage) SetURL(id string, originalURL string) (string, error) {
 	_, loaded := m.data.LoadOrStore(id, originalURL)
 	if loaded {
 		log.Println("key is already in the storage")
@@ -45,14 +45,15 @@ func (m *MapStorage) SetURL(id string, originalURL string) error {
 			m.helper.WriteFile(lenSyncMap(m.data), originalURL, id)
 		}
 	}
-	return nil
+	return "", nil
 }
 
-func (m *MapStorage) SetURLBatch(u map[string]string) error {
-
+func (m *MapStorage) SetURLBatch(u map[string]string) (map[string]string, error) {
+	returned := make(map[string]string)
 	for s := range u {
-		_, ok := m.data.LoadOrStore(s, u[s])
+		olds, ok := m.data.LoadOrStore(s, u[s])
 		if ok {
+			returned[s] = olds.(string)
 			log.Println("key is already in the storage")
 		} else {
 			if m.helper != nil {
@@ -60,7 +61,7 @@ func (m *MapStorage) SetURLBatch(u map[string]string) error {
 			}
 		}
 	}
-	return nil
+	return returned, nil
 }
 func (m *MapStorage) GetKey(url string) (string, error) {
 	var storedKey string

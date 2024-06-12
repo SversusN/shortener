@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/SversusN/shortener/internal/internalerrors"
 	"io"
 	"log"
 	"net/http"
@@ -49,22 +51,20 @@ func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 		log.Printf("Error parsing URL %s", err)
 		return
 	}
+	res.Header().Set("Content-Type", "text/plain")
 	if len(originalURL) > 0 {
 		var shortURL string
-		result, err := h.s.GetKey(string(originalURL))
-		if err != nil {
-			key := utils.GenerateShortKey()
-			e := h.s.SetURL(key, string(originalURL))
-			if e != nil {
-				log.Println("smth bad with data storage ->", e)
-			}
-			shortURL = h.getFullURL(key)
-			res.WriteHeader(http.StatusCreated)
-		} else {
-			shortURL = h.getFullURL(result)
+		key := utils.GenerateShortKey()
+		result, err := h.s.SetURL(key, string(originalURL))
+		switch {
+		case errors.Is(err, internalerrors.ErrOriginalURLAlreadyExists):
 			res.WriteHeader(http.StatusConflict)
+		case err != nil:
+			res.WriteHeader(http.StatusInternalServerError)
+		default:
+			res.WriteHeader(http.StatusCreated)
 		}
-		res.Header().Set("Content-Type", "text/plain")
+		shortURL = h.getFullURL(result)
 		res.Write([]byte(shortURL))
 	} else {
 		res.WriteHeader(http.StatusBadRequest)
@@ -91,8 +91,8 @@ func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		log.Printf("Error parsing URLs %s", err)
-		return
 	}
+	res.Header().Set("Content-Type", "application/json")
 	var (
 		reqBody JSONRequest
 		resBody JSONResponse
@@ -103,35 +103,34 @@ func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusBadRequest)
 	}
 	defer req.Body.Close()
-	key, err = h.s.GetKey(reqBody.URL)
-	if err == nil {
-		res.Header().Set("Content-Type", "application/json")
+	key = utils.GenerateShortKey()
+	result, err := h.s.SetURL(key, reqBody.URL)
+	switch {
+	case errors.Is(err, internalerrors.ErrOriginalURLAlreadyExists):
 		res.WriteHeader(http.StatusConflict)
-		resBody.Result = h.getFullURL(key)
-	} else {
-		key = utils.GenerateShortKey()
-		e := h.s.SetURL(key, reqBody.URL)
-		if e != nil {
-			log.Println("smth bad with data storage, mb double key ->", e)
-		}
-		resBody.Result = h.getFullURL(key)
-		res.Header().Set("Content-Type", "application/json")
+	case err != nil:
+		res.WriteHeader(http.StatusInternalServerError)
+	default:
 		res.WriteHeader(http.StatusCreated)
 	}
-	resJSON, e := json.Marshal(&resBody)
-	if e == nil {
+	resBody.Result = h.getFullURL(result)
+
+	resJSON, err := json.Marshal(&resBody)
+	if err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 	}
 	res.Write(resJSON)
 }
 
 func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Request) {
+
 	b, err := io.ReadAll(req.Body)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		log.Printf("Error parsing URLs %s", err)
 		return
 	}
+	res.Header().Set("Content-Type", "application/json")
 	defer req.Body.Close()
 	var reqBody []JSONBatchRequest
 	var respBody []JSONBatchResponse
@@ -140,28 +139,24 @@ func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Reques
 		http.Error(res, "Bad JSON request...", http.StatusBadRequest)
 	}
 	for _, r := range reqBody {
-		var rs JSONBatchResponse
-		key, err := h.s.GetKey(r.OriginalURL)
-		if err == nil {
-			rs.ShortenedURL = h.getFullURL(key)
-			res.Header().Set("Content-Type", "application/json")
-			res.WriteHeader(http.StatusConflict)
-		} else {
-			newKey := utils.GenerateShortKey()
-			saveUrls[newKey] = r.OriginalURL
-			rs.ShortenedURL = h.getFullURL(newKey)
-			res.Header().Set("Content-Type", "application/json")
-			res.WriteHeader(http.StatusCreated)
-		}
-		rs.CorrelationID = r.CorrelationID
-		respBody = append(respBody, rs)
+		newKey := utils.GenerateShortKey()
+		saveUrls[newKey] = r.OriginalURL
 	}
 	if len(saveUrls) > 0 {
-		err := h.s.SetURLBatch(saveUrls)
-		//Если 2 одинаковых ссылки в пакете - транзакция БД упадет
-		if err != nil {
-			http.Error(res, err.Error(), http.StatusConflict)
-			return
+		var rs JSONBatchResponse
+		mapResp, err := h.s.SetURLBatch(saveUrls)
+		for s := range mapResp {
+			rs.ShortenedURL = h.getFullURL(s)
+			rs.CorrelationID = s
+			respBody = append(respBody, rs)
+		}
+		switch {
+		case errors.Is(err, internalerrors.ErrOriginalURLAlreadyExists):
+			res.WriteHeader(http.StatusConflict)
+		case err != nil:
+			res.WriteHeader(http.StatusInternalServerError)
+		default:
+			res.WriteHeader(http.StatusCreated)
 		}
 	}
 	resBody, err := json.Marshal(&respBody)

@@ -41,7 +41,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 
 func TestRouter(t *testing.T) {
 	a := app.New()
-	//хенлеры проверяем бне портим БД
+	//хенлеры проверяем не портим БД
 	a.Storage = nil
 	a.Storage = primitivestorage.NewStorage(nil, errors.New("dont need file"))
 	//Для хендлеров тоже мап

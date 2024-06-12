@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v5"
+	"github.com/SversusN/shortener/internal/internalerrors"
 	"log"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -61,35 +61,60 @@ func (pg *PostgresDB) GetURL(shortURL string) (string, error) {
 	return originalURL, nil
 }
 
-func (pg *PostgresDB) SetURL(shortURL string, originalURL string) error {
-	query := "INSERT INTO URLS (short_url, original_url) VALUES (@shortURL, @originalURL)"
-	_, err := pg.db.ExecContext(pg.ctx, query, pgx.NamedArgs{"shortURL": shortURL, "originalURL": originalURL})
-	if err != nil {
-		return fmt.Errorf("failed to insert URL: %w", err)
-	}
-	return nil
-}
-
-func (pg *PostgresDB) SetURLBatch(u map[string]string) error {
+func (pg *PostgresDB) SetURL(shortURL string, originalURL string) (string, error) {
 	tx, err := pg.db.Begin()
 	if err != nil {
-		return err
+		return "", fmt.Errorf("failed to begin transaction: %w", err)
+		tx.Rollback()
 	}
+	var keyExist string
+	queryCheck := "SELECT short_url FROM URLS WHERE original_url=$1 LIMIT 1 FOR UPDATE"
 	query := "INSERT INTO URLS (short_url, original_url) VALUES ($1, $2)"
-	stmt, _ := tx.PrepareContext(pg.ctx, query)
-	defer stmt.Close()
+	errKeyExist := tx.QueryRowContext(pg.ctx, queryCheck, originalURL).Scan(&keyExist)
+	if errors.Is(errKeyExist, sql.ErrNoRows) {
+		err := tx.QueryRowContext(pg.ctx, query, shortURL, originalURL)
+		if err != nil {
+			fmt.Errorf("failed to query short URL: %w", err)
+		}
+		tx.Commit()
+		return shortURL, nil
+	} else {
+		tx.Commit()
+		return keyExist, internalerrors.ErrOriginalURLAlreadyExists
+
+	}
+
+}
+
+func (pg *PostgresDB) SetURLBatch(u map[string]string) (map[string]string, error) {
+	result := make(map[string]string)
+	tx, err := pg.db.Begin()
+	queryCheck := "SELECT short_url FROM URLS WHERE original_url=$1 LIMIT 1 FOR UPDATE"
+	query := "INSERT INTO URLS (short_url, original_url) VALUES ($1, $2)"
+	var possibleError error
 	for s := range u {
-		_, e := stmt.ExecContext(pg.ctx, s, u[s])
-		if e != nil {
-			tx.Rollback()
-			return fmt.Errorf("failed to commit transaction: %w", e)
+		var keyExist string
+		errBlankKey := tx.QueryRowContext(pg.ctx, queryCheck, u[s]).Scan(&keyExist)
+		if errors.Is(errBlankKey, sql.ErrNoRows) {
+			err := tx.QueryRowContext(pg.ctx, query, s, u[s])
+			if err != nil {
+				fmt.Errorf("failed to insert URL: %w", err)
+			}
+			result[s] = u[s]
+		} else {
+			possibleError = internalerrors.ErrOriginalURLAlreadyExists
+			result[keyExist] = u[s]
 		}
 	}
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+		err := tx.Rollback()
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
-	return nil
+	return result, possibleError
 }
 
 func (pg *PostgresDB) GetKey(originalURL string) (string, error) {

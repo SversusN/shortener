@@ -30,7 +30,7 @@ type App struct {
 func New() *App {
 	var ns storage.Storage
 	cfg := config.NewConfig()
-	ctx := context.TODO() //определится по требованиям
+	ctx := context.Background()
 	fh, err := utils.NewFileHelper(cfg.FlagFilePath)
 	//DB
 	if cfg.DataBaseDSN == "" {
