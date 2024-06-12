@@ -64,8 +64,8 @@ func (pg *PostgresDB) GetURL(shortURL string) (string, error) {
 func (pg *PostgresDB) SetURL(shortURL string, originalURL string) (string, error) {
 	tx, err := pg.db.Begin()
 	if err != nil {
-		return "", fmt.Errorf("failed to begin transaction: %w", err)
 		tx.Rollback()
+		return "", fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	var keyExist string
 	queryCheck := "SELECT short_url FROM URLS WHERE original_url=$1 LIMIT 1 FOR UPDATE"
@@ -81,9 +81,7 @@ func (pg *PostgresDB) SetURL(shortURL string, originalURL string) (string, error
 	} else {
 		tx.Commit()
 		return keyExist, internalerrors.ErrOriginalURLAlreadyExists
-
 	}
-
 }
 
 func (pg *PostgresDB) SetURLBatch(u map[string]string) (map[string]string, error) {
@@ -115,22 +113,6 @@ func (pg *PostgresDB) SetURLBatch(u map[string]string) (map[string]string, error
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 	return result, possibleError
-}
-
-func (pg *PostgresDB) GetKey(originalURL string) (string, error) {
-	var storedURL string
-	rowExist := pg.db.QueryRowContext(
-		pg.ctx,
-		`SELECT short_url FROM URLS WHERE original_url=$1 LIMIT 1`,
-		originalURL)
-	err := rowExist.Scan(&storedURL)
-	if err != nil {
-		return "", err
-	}
-	if originalURL == "" {
-		return "", errors.New("nothing found for short URL")
-	}
-	return storedURL, nil
 }
 
 func (pg *PostgresDB) Ping() error {

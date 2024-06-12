@@ -2,6 +2,7 @@ package primitivestorage
 
 import (
 	"errors"
+	"github.com/SversusN/shortener/internal/internalerrors"
 	"log"
 	"sync"
 
@@ -36,33 +37,62 @@ func (m *MapStorage) GetURL(id string) (string, error) {
 	return s, nil
 }
 
-func (m *MapStorage) SetURL(id string, originalURL string) (string, error) {
-	_, loaded := m.data.LoadOrStore(id, originalURL)
-	if loaded {
-		log.Println("key is already in the storage")
-	} else {
-		if m.helper != nil {
-			m.helper.WriteFile(lenSyncMap(m.data), originalURL, id)
+func (m *MapStorage) SetURL(shortURL string, originalURL string) (string, error) {
+	result, err := m.GetKey(originalURL)
+	switch {
+	case errors.Is(err, internalerrors.ErrNotFound):
+		{
+			_, loaded := m.data.LoadOrStore(shortURL, originalURL)
+			if m.helper != nil {
+				m.helper.WriteFile(lenSyncMap(m.data), originalURL, shortURL)
+			}
+			if loaded {
+				log.Println("key is already in the storage")
+			}
+			return shortURL, nil
+		}
+	case errors.Is(err, internalerrors.ErrOriginalURLAlreadyExists):
+		{
+			return result, internalerrors.ErrOriginalURLAlreadyExists
+		}
+	default:
+		{
+			return "", err
 		}
 	}
-	return "", nil
 }
 
 func (m *MapStorage) SetURLBatch(u map[string]string) (map[string]string, error) {
 	returned := make(map[string]string)
+	var possibleDoubleError error
 	for s := range u {
-		olds, ok := m.data.LoadOrStore(s, u[s])
-		if ok {
-			returned[s] = olds.(string)
-			log.Println("key is already in the storage")
-		} else {
-			if m.helper != nil {
-				m.helper.WriteFile(lenSyncMap(m.data), s, u[s])
+		result, err := m.GetKey(u[s])
+		switch {
+		case errors.Is(err, internalerrors.ErrNotFound):
+			{
+				_, loaded := m.data.LoadOrStore(s, u[s])
+				if m.helper != nil {
+					m.helper.WriteFile(lenSyncMap(m.data), s, u[s])
+				}
+				if loaded {
+					log.Println("key is already in the storage")
+				}
+				returned[s] = u[s]
+			}
+		case errors.Is(err, internalerrors.ErrOriginalURLAlreadyExists):
+			{
+				possibleDoubleError = err
+				returned[s] = result
+			}
+		default:
+			{
+				return returned, err
 			}
 		}
 	}
-	return returned, nil
+	return returned, possibleDoubleError
 }
+
 func (m *MapStorage) GetKey(url string) (string, error) {
 	var storedKey string
 	var ok bool
@@ -72,13 +102,13 @@ func (m *MapStorage) GetKey(url string) (string, error) {
 			ok = true
 			return true
 		}
-		ok = false
 		return false
 	})
 	if ok {
-		return storedKey, nil
+		return storedKey, internalerrors.ErrOriginalURLAlreadyExists
+	} else {
+		return "", internalerrors.ErrNotFound
 	}
-	return "", errors.New("key not found")
 }
 
 func lenSyncMap(m *sync.Map) int {
