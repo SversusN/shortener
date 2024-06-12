@@ -72,10 +72,7 @@ func (pg *PostgresDB) SetURL(shortURL string, originalURL string) (string, error
 	query := "INSERT INTO URLS (short_url, original_url) VALUES ($1, $2)"
 	errKeyExist := tx.QueryRowContext(pg.ctx, queryCheck, originalURL).Scan(&keyExist)
 	if errors.Is(errKeyExist, sql.ErrNoRows) {
-		err := tx.QueryRowContext(pg.ctx, query, shortURL, originalURL)
-		if err != nil {
-			log.Printf("failed to insert short URL: %v\n", err)
-		}
+		tx.QueryRowContext(pg.ctx, query, shortURL, originalURL)
 		tx.Commit()
 		return shortURL, nil
 	} else {
@@ -94,10 +91,7 @@ func (pg *PostgresDB) SetURLBatch(u map[string]string) (map[string]string, error
 		var keyExist string
 		errBlankKey := tx.QueryRowContext(pg.ctx, queryCheck, u[s]).Scan(&keyExist)
 		if errors.Is(errBlankKey, sql.ErrNoRows) {
-			err := tx.QueryRowContext(pg.ctx, query, s, u[s])
-			if err != nil {
-				log.Printf("failed to insert short URL: %v\n", err)
-			}
+			tx.QueryRowContext(pg.ctx, query, s, u[s])
 			result[s] = u[s]
 		} else {
 			possibleError = internalerrors.ErrOriginalURLAlreadyExists
