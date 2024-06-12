@@ -33,7 +33,7 @@ func New() *App {
 	ctx := context.Background()
 	fh, err := utils.NewFileHelper(cfg.FlagFilePath)
 	//DB
-	if cfg.DataBaseDSN != "" {
+	if cfg.DataBaseDSN == "" {
 		ns = primitivestorage.NewStorage(fh, err)
 	} else {
 		ns, err = dbstorage.NewDB(cfg.DataBaseDSN, ctx)
