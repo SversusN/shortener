@@ -74,7 +74,7 @@ func (pg *PostgresDB) SetURL(shortURL string, originalURL string) (string, error
 	if errors.Is(errKeyExist, sql.ErrNoRows) {
 		err := tx.QueryRowContext(pg.ctx, query, shortURL, originalURL)
 		if err != nil {
-			fmt.Errorf("failed to query short URL: %w", err)
+			log.Printf("failed to insert short URL: %v\n", err)
 		}
 		tx.Commit()
 		return shortURL, nil
@@ -96,7 +96,7 @@ func (pg *PostgresDB) SetURLBatch(u map[string]string) (map[string]string, error
 		if errors.Is(errBlankKey, sql.ErrNoRows) {
 			err := tx.QueryRowContext(pg.ctx, query, s, u[s])
 			if err != nil {
-				fmt.Errorf("failed to insert URL: %w", err)
+				log.Printf("failed to insert short URL: %v\n", err)
 			}
 			result[s] = u[s]
 		} else {
