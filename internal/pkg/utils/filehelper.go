@@ -52,7 +52,8 @@ func (fh FileHelper) ReadFile() *sync.Map {
 		for scanner.Scan() {
 			err := json.Unmarshal(scanner.Bytes(), &fields)
 			if err != nil {
-				return nil
+				//при пустом файле data - nil
+				return &tempMap
 			}
 			tempMap.LoadOrStore(fields.ShortKey, fields.OriginalURL)
 		}

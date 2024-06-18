@@ -1,25 +1,28 @@
 package main
 
 import (
-	"github.com/SversusN/shortener/internal/app"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"errors"
 	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/SversusN/shortener/internal/app"
+	"github.com/SversusN/shortener/internal/handlers"
+	"github.com/SversusN/shortener/internal/storage/primitivestorage"
 )
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body string) (*http.Response, string) {
 	req, err := http.NewRequest(method, ts.URL+path, strings.NewReader(body))
 	require.NoError(t, err)
-	//Подсказали в конференции =D
 	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
-
 	resp, err := ts.Client().Do(req)
 	require.NoError(t, err)
 	defer func(Body io.ReadCloser) {
@@ -38,8 +41,14 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 
 func TestRouter(t *testing.T) {
 	a := app.New()
-	ts := httptest.NewServer(a.CreateRouter(*a.Handlers))
+	//хенлеры проверяем не портим БД
+	a.Storage = nil
+	a.Storage = primitivestorage.NewStorage(nil, errors.New("dont need file"))
+	//Для хендлеров тоже мап
+	a.Handlers = handlers.NewHandlers(a.Config, a.Storage)
 	a.Storage.SetURL("sk", "http://example.com")
+	ts := httptest.NewServer(a.CreateRouter(*a.Handlers))
+
 	defer ts.Close()
 
 	testCases := []struct {
@@ -54,7 +63,7 @@ func TestRouter(t *testing.T) {
 		{
 			name:         "Good Post request, 201 waiting",
 			method:       http.MethodPost,
-			body:         "http://example.com",
+			body:         "http://example_example2.com",
 			expectedCode: http.StatusCreated,
 		},
 		{
@@ -85,8 +94,16 @@ func TestRouter(t *testing.T) {
 		{
 			name:         "Json serialize handler test",
 			method:       http.MethodPost,
-			body:         "{\"url\":\"http://example.com\"}",
+			body:         "{\"url\":\"http://example_example_example.com\"}",
 			path:         "/api/shorten",
+			expectedCode: http.StatusCreated,
+			contentType:  "application/json",
+		},
+		{
+			name:         "Json batch handler test",
+			method:       http.MethodPost,
+			body:         "[\n{\n\"correlation_id\": \"1\",\n        \"original_url\": \"http://example33.com\"\n    }\n\n] ",
+			path:         "/api/shorten/batch",
 			expectedCode: http.StatusCreated,
 			contentType:  "application/json",
 		},
@@ -106,6 +123,11 @@ func TestRouter(t *testing.T) {
 			if tc.name == "Json serialize handler test" {
 				assert.Equal(t, tc.contentType, resp.Header.Get("Content-Type"))
 			}
+			if tc.name == "Json batch handler test" {
+				assert.Equal(t, tc.contentType, resp.Header.Get("Content-Type"))
+			}
 		})
 	}
+	//на всякий обнуляем конвеер
+	a = nil
 }
