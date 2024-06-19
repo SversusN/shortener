@@ -16,8 +16,10 @@ const (
 	TokenExp   = time.Minute * 180
 	SecretKey  = "secret"
 	NameCookie = "Token"
-	CtxUser    = "UserID"
+	CtxUser    = ctxUser("UserID")
 )
+
+type ctxUser string
 
 type Claims struct {
 	jwt.RegisteredClaims

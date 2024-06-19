@@ -196,8 +196,8 @@ func (pg *PostgresDB) GetUserUrls(userID int) (any, error) {
 	result := make([]UserURLEntity, 0)
 	query := "SELECT short_url, original_url FROM URLS WHERE user_id = $1;"
 	rows, err := pg.db.QueryContext(pg.ctx, query, userID)
-	if err != nil {
-		return nil, errors.New("Error postgres get userUrls")
+	if err != nil || rows.Err() != nil {
+		return nil, errors.New("error postgres get userUrls")
 	}
 	defer rows.Close()
 	var count = 0
