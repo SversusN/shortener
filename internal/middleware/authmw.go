@@ -72,7 +72,8 @@ func (a AuthMW) AuthMWfunc(next http.Handler) http.Handler {
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			} else {
-				w.WriteHeader(http.StatusUnauthorized)
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("clear cookie data"))
 			}
 		}
 		saver, ok := a.db.(storage.UserStorage)
