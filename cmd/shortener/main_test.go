@@ -107,6 +107,12 @@ func TestRouter(t *testing.T) {
 			expectedCode: http.StatusCreated,
 			contentType:  "application/json",
 		},
+		{
+			name:         "Get user URL Test. Bad NO auth",
+			method:       http.MethodGet,
+			path:         "/api/user/urls",
+			expectedCode: http.StatusUnauthorized,
+		},
 	}
 
 	for _, tc := range testCases {

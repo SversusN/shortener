@@ -33,7 +33,7 @@ func NewConfig() (c *Config) {
 		if hp[0] == "http" || hp[0] == "https" {
 			c.FlagBaseAddress = flagValue
 		} else {
-			c.FlagBaseAddress = "http://" + flagValue
+			c.FlagBaseAddress = fmt.Sprint("http://", flagValue)
 		}
 		return nil
 	})
