@@ -187,26 +187,26 @@ func (pg *PostgresDB) CreateUser(ctx context.Context) (int, error) {
 	var userID int
 	err := pg.db.QueryRowContext(ctx, query).Scan(&userID)
 	if err != nil {
-		return 0, fmt.Errorf("postgres create userId: %w", err)
+		return 0, errors.New("postgres create userId")
 	}
 	return userID, nil
 }
 
 func (pg *PostgresDB) GetUserUrls(userID int) (any, error) {
-	result := make([]UserUrlEntity, 0)
-	query := "SELECT short_url, original_url FROM URLS WHERE user_id=$1;"
+	result := make([]UserURLEntity, 0)
+	query := "SELECT short_url, original_url FROM URLS WHERE user_id = $1;"
 	rows, err := pg.db.QueryContext(pg.ctx, query, userID)
 	if err != nil {
-		return nil, fmt.Errorf("postgres get userUrls: %w", err)
+		return nil, errors.New("Error postgres get userUrls")
 	}
 	defer rows.Close()
 	var count = 0
 	for rows.Next() {
 		count++
-		resultRow := UserUrlEntity{}
-		err = rows.Scan(&resultRow.ShortUrl, &resultRow.OriginalURL)
+		resultRow := UserURLEntity{}
+		err = rows.Scan(&resultRow.ShortURL, &resultRow.OriginalURL)
 		if err != nil {
-			fmt.Errorf("postgres get userUrls: %w", err)
+			log.Printf("postgres get userUrls: %v", err)
 			return nil, err
 		}
 		result = append(result, resultRow)

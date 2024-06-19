@@ -37,7 +37,7 @@ type JSONBatchResponse struct {
 	ShortenedURL  string `json:"short_url"`
 }
 type JSONUserURLs struct {
-	ShortUrl    string `json:"short_url"`
+	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
 
@@ -61,12 +61,12 @@ func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 	if len(originalURL) > 0 {
 		var shortURL string
 		key := utils.GenerateShortKey()
-		userDb, ok := h.s.(storage.UserStorage)
+		userDB, ok := h.s.(storage.UserStorage)
 		var result string
 		if !ok || userIDInt == -1 {
 			result, err = h.s.SetURL(key, string(originalURL))
 		} else {
-			result, err = userDb.SetUserURL(key, string(originalURL), userIDInt)
+			result, err = userDB.SetUserURL(key, string(originalURL), userIDInt)
 		}
 		switch {
 		case errors.Is(err, internalerrors.ErrOriginalURLAlreadyExists):
@@ -122,11 +122,11 @@ func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 	}
 	key = utils.GenerateShortKey()
 	var result string
-	userDb, ok := h.s.(storage.UserStorage)
+	userDB, ok := h.s.(storage.UserStorage)
 	if !ok || userIDInt == -1 {
 		result, err = h.s.SetURL(key, reqBody.URL)
 	} else {
-		result, err = userDb.SetUserURL(key, reqBody.URL, userIDInt)
+		result, err = userDB.SetUserURL(key, reqBody.URL, userIDInt)
 	}
 	switch {
 	case errors.Is(err, internalerrors.ErrOriginalURLAlreadyExists):
@@ -171,7 +171,7 @@ func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Reques
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		mapResp := make(map[string]string)
+		var mapResp map[string]string
 		userDb, ok := h.s.(storage.UserStorage)
 		if !ok || userIDInt == -1 {
 			mapResp, err = h.s.SetURLBatch(saveUrls)
@@ -245,7 +245,7 @@ func (h Handlers) HandlerGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Bad userID", http.StatusBadRequest)
 	}
-	entities, ok := mapRest.([]dbstorage.UserUrlEntity)
+	entities, ok := mapRest.([]dbstorage.UserURLEntity)
 	if !ok {
 		http.Error(w, "Bad userID, need Int data", http.StatusInternalServerError)
 		return
@@ -256,16 +256,16 @@ func (h Handlers) HandlerGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	}
 	var resBody []JSONUserURLs
 	for _, o := range entities {
-		resBody = append(resBody, JSONUserURLs{ShortUrl: h.getFullURL(o.ShortUrl), OriginalURL: o.OriginalURL})
+		resBody = append(resBody, JSONUserURLs{ShortURL: h.getFullURL(o.ShortURL), OriginalURL: o.OriginalURL})
 	}
-	resBodyJson, err := json.Marshal(&resBody)
+	resBodyJSON, err := json.Marshal(&resBody)
 	if err != nil {
 		http.Error(w, "Bad JSON", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(resBodyJson)
+	w.Write(resBodyJSON)
 }
 
 func indexOfURL(element string, data []JSONBatchRequest) int {

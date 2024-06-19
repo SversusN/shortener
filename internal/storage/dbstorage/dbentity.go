@@ -1,6 +1,6 @@
 package dbstorage
 
-type UserUrlEntity struct {
-	ShortUrl    string
+type UserURLEntity struct {
+	ShortURL    string
 	OriginalURL string
 }

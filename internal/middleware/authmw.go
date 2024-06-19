@@ -2,8 +2,10 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/SversusN/shortener/internal/storage/storage"
+	"log"
 	"net/http"
 	"time"
 
@@ -52,11 +54,11 @@ func GetUserID(tokenString string) (int, error) {
 			return []byte(SecretKey), nil
 		})
 	if err != nil {
-		return -1, fmt.Errorf("parsing token: %w", err)
+		return -1, errors.New("error parsing token")
 	}
 
 	if !token.Valid {
-		return -1, fmt.Errorf("invalid token")
+		return -1, errors.New("invalid token")
 	}
 
 	return claims.UserID, nil
@@ -82,17 +84,16 @@ func (a AuthMW) AuthMWfunc(next http.Handler) http.Handler {
 		}
 		userID, err := saver.CreateUser(r.Context())
 		if err != nil {
-			fmt.Errorf("err while creating new user in auth mw: %v", err.Error())
+			log.Print("err while creating new user in auth mw")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		token, err := BuildNewToken(userID)
 		if err != nil {
-			fmt.Errorf("err while creating new jwt: %v", err.Error())
+			log.Print("err while building new token")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-
 		http.SetCookie(w, &http.Cookie{
 			Name:  NameCookie,
 			Value: token,
