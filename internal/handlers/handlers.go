@@ -12,6 +12,7 @@ import (
 
 	"github.com/SversusN/shortener/config"
 	"github.com/SversusN/shortener/internal/internalerrors"
+	mw "github.com/SversusN/shortener/internal/middleware"
 	"github.com/SversusN/shortener/internal/pkg/utils"
 	"github.com/SversusN/shortener/internal/storage/dbstorage"
 	"github.com/SversusN/shortener/internal/storage/storage"
@@ -278,7 +279,7 @@ func indexOfURL(element string, data []JSONBatchRequest) int {
 }
 
 func getUserIDFromCtx(r *http.Request) (int, error) {
-	userID := r.Context().Value("UserID")
+	userID := r.Context().Value(mw.CtxUser)
 	if userID == nil {
 		return -1, errors.New("user ID is missing")
 	}
