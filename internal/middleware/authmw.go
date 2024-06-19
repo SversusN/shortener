@@ -22,12 +22,11 @@ type Claims struct {
 	UserID int
 }
 type AuthMW struct {
-	db  storage.Storage
-	ctx *context.Context
+	db storage.Storage
 }
 
-func NewAuthMW(db storage.Storage, ctx *context.Context) *AuthMW {
-	return &AuthMW{db: db, ctx: ctx}
+func NewAuthMW(db storage.Storage) *AuthMW {
+	return &AuthMW{db: db}
 }
 
 func BuildNewToken(userID int) (string, error) {
@@ -63,15 +62,17 @@ func GetUserID(tokenString string) (int, error) {
 	return claims.UserID, nil
 }
 
-func (a AuthMW) AuthMWfunc(h http.Handler) http.Handler {
+func (a AuthMW) AuthMWfunc(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(NameCookie)
 		if err == nil {
 			userID, err := GetUserID(cookie.Value)
 			if userID != -1 && err == nil {
 				ctx := context.WithValue(r.Context(), CtxUser, userID)
-				h.ServeHTTP(w, r.WithContext(ctx))
+				next.ServeHTTP(w, r.WithContext(ctx))
 				return
+			} else {
+				w.WriteHeader(http.StatusUnauthorized)
 			}
 		}
 		saver, ok := a.db.(storage.UserStorage)
@@ -95,7 +96,7 @@ func (a AuthMW) AuthMWfunc(h http.Handler) http.Handler {
 			Name:  NameCookie,
 			Value: token,
 		})
-		ctx := context.WithValue(*a.ctx, CtxUser, userID)
-		h.ServeHTTP(w, r.WithContext(ctx))
+		ctx := context.WithValue(r.Context(), CtxUser, userID)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

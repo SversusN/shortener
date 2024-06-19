@@ -53,7 +53,7 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 	r.Use(mw.GzipMiddleware)
 	//ИД пользователя выдает постгрес, иначе мв не включаем
 	if _, ok := a.Storage.(storage.UserStorage); ok {
-		r.Use(mw.NewAuthMW(a.Storage, &a.Context).AuthMWfunc)
+		r.Use(mw.NewAuthMW(a.Storage).AuthMWfunc)
 	}
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", hnd.HandlerPost)

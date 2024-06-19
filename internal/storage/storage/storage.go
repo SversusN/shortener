@@ -13,7 +13,7 @@ type Pinger interface {
 }
 
 type UserStorage interface {
-	GetUserUrls(userId int) (any, error)
+	GetUserUrls(userID int) (any, error)
 	CreateUser(ctx context.Context) (int, error)
 	SetUserURL(id string, targetURL string, userID int) (string, error)
 	SetUserURLBatch(u map[string]string, userID int) (map[string]string, error)
