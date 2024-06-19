@@ -37,8 +37,8 @@ type JSONBatchResponse struct {
 	ShortenedURL  string `json:"short_url"`
 }
 type JSONUserURLs struct {
-	ShortUrl    string `json:"shortURL"`
-	OriginalURL string `json:"originalURL"`
+	ShortUrl    string `json:"ShortURL"`
+	OriginalURL string `json:"OriginalURL"`
 }
 
 func NewHandlers(cfg *config.Config, s storage.Storage) *Handlers {
@@ -258,12 +258,13 @@ func (h Handlers) HandlerGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	for _, o := range entities {
 		resBody = append(resBody, JSONUserURLs{ShortUrl: "http://" + h.getFullURL(o.ShortUrl), OriginalURL: o.OriginalURL})
 	}
+	w.Header().Set("Content-Type", "application/json")
 	resBodyJson, err := json.Marshal(&resBody)
 	if err != nil {
 		http.Error(w, "Bad JSON", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
+
 	w.WriteHeader(http.StatusOK)
 	w.Write(resBodyJson)
 }
