@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/SversusN/shortener/internal/internalerrors"
 	"io"
 	"log"
 	"net/http"
@@ -12,7 +11,9 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/SversusN/shortener/config"
+	"github.com/SversusN/shortener/internal/internalerrors"
 	"github.com/SversusN/shortener/internal/pkg/utils"
+	"github.com/SversusN/shortener/internal/storage/dbstorage"
 	"github.com/SversusN/shortener/internal/storage/storage"
 )
 
@@ -35,13 +36,13 @@ type JSONBatchResponse struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortenedURL  string `json:"short_url"`
 }
+type JSONUserURLs struct {
+	ShortUrl    string `json:"shortURL"`
+	OriginalURL string `json:"originalURL"`
+}
 
 func NewHandlers(cfg *config.Config, s storage.Storage) *Handlers {
 	return &Handlers{cfg, s}
-}
-
-func (h Handlers) getFullURL(result string) string {
-	return fmt.Sprint(h.cfg.FlagBaseAddress, "/", result)
 }
 
 func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
@@ -52,10 +53,21 @@ func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	res.Header().Set("Content-Type", "text/plain")
+	userIDInt, err := getUserIDFromCtx(req)
+	if errors.Is(err, internalerrors.ErrUserTypeError) {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	if len(originalURL) > 0 {
 		var shortURL string
 		key := utils.GenerateShortKey()
-		result, err := h.s.SetURL(key, string(originalURL))
+		userDb, ok := h.s.(storage.UserStorage)
+		var result string
+		if !ok && userIDInt == -1 {
+			result, err = h.s.SetURL(key, string(originalURL))
+		} else {
+			result, err = userDb.SetUserURL(key, string(originalURL), userIDInt)
+		}
 		switch {
 		case errors.Is(err, internalerrors.ErrOriginalURLAlreadyExists):
 			res.WriteHeader(http.StatusConflict)
@@ -103,8 +115,19 @@ func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusBadRequest)
 	}
 	defer req.Body.Close()
+	userIDInt, err := getUserIDFromCtx(req)
+	if errors.Is(err, internalerrors.ErrUserTypeError) {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	key = utils.GenerateShortKey()
-	result, err := h.s.SetURL(key, reqBody.URL)
+	var result string
+	userDb, ok := h.s.(storage.UserStorage)
+	if !ok || userIDInt == -1 {
+		result, err = h.s.SetURL(key, reqBody.URL)
+	} else {
+		result, err = userDb.SetUserURL(key, reqBody.URL, userIDInt)
+	}
 	switch {
 	case errors.Is(err, internalerrors.ErrOriginalURLAlreadyExists):
 		res.WriteHeader(http.StatusConflict)
@@ -123,7 +146,6 @@ func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Request) {
-
 	b, err := io.ReadAll(req.Body)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -144,7 +166,18 @@ func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Reques
 	}
 	if len(saveUrls) > 0 {
 		var rs JSONBatchResponse
-		mapResp, err := h.s.SetURLBatch(saveUrls)
+		userIDInt, err := getUserIDFromCtx(req)
+		if errors.Is(err, internalerrors.ErrUserTypeError) {
+			res.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		mapResp := make(map[string]string)
+		userDb, ok := h.s.(storage.UserStorage)
+		if !ok || userIDInt == -1 {
+			mapResp, err = h.s.SetURLBatch(saveUrls)
+		} else {
+			mapResp, err = userDb.SetUserURLBatch(saveUrls, userIDInt)
+		}
 		for s := range mapResp {
 			i := indexOfURL(mapResp[s], reqBody)
 			rs.ShortenedURL = h.getFullURL(s)
@@ -184,6 +217,56 @@ func (h Handlers) HandlerDBPing(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (h Handlers) HandlerGetUserURLs(w http.ResponseWriter, r *http.Request) {
+	_, err := r.Cookie("Token")
+	if err != nil {
+		http.Error(w, "Bad Token, no token in cookie", http.StatusUnauthorized)
+		return
+	}
+	userDB, ok := h.s.(storage.UserStorage)
+	if !ok {
+		http.Error(w, "No DB for request, sorry...", http.StatusInternalServerError)
+		return
+	}
+	userIDInt, err := getUserIDFromCtx(r)
+	if errors.Is(err, internalerrors.ErrUserTypeError) {
+		http.Error(w, "Bad userID, need Int data", http.StatusBadRequest)
+		return
+	}
+	if userIDInt == -1 {
+		http.Error(w, "No userID, bad token data", http.StatusUnauthorized)
+		return
+	}
+	mapRest, err := userDB.GetUserUrls(userIDInt)
+	if errors.Is(err, internalerrors.ErrNotFound) {
+		http.Error(w, "No URLs for user", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Bad userID", http.StatusBadRequest)
+	}
+	entities, ok := mapRest.([]dbstorage.UserUrlEntity)
+	if !ok {
+		http.Error(w, "Bad userID, need Int data", http.StatusInternalServerError)
+		return
+	}
+	if len(entities) == 0 {
+		http.Error(w, "No URLs for user", http.StatusNotFound)
+		return
+	}
+	var resBody []JSONUserURLs
+	for _, o := range entities {
+		resBody = append(resBody, JSONUserURLs{ShortUrl: h.getFullURL(o.ShortUrl), OriginalURL: o.OriginalURL})
+	}
+	resBodyJson, err := json.Marshal(&resBody)
+	if err != nil {
+		http.Error(w, "Bad JSON", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(resBodyJson)
+}
+
 func indexOfURL(element string, data []JSONBatchRequest) int {
 	for k, v := range data {
 		if element == v.OriginalURL {
@@ -191,4 +274,21 @@ func indexOfURL(element string, data []JSONBatchRequest) int {
 		}
 	}
 	return -1 //not found.
+}
+
+func getUserIDFromCtx(r *http.Request) (int, error) {
+	userID := r.Context().Value("UserID")
+	if userID == nil {
+		return -1, errors.New("User ID is missing")
+	}
+	userIDInt, ok := userID.(int)
+	if !ok {
+		return -1, internalerrors.ErrUserTypeError
+	} else {
+		return userIDInt, nil
+	}
+}
+
+func (h Handlers) getFullURL(result string) string {
+	return fmt.Sprint(h.cfg.FlagBaseAddress, "/", result)
 }
