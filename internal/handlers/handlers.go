@@ -256,7 +256,7 @@ func (h Handlers) HandlerGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	}
 	var resBody []JSONUserURLs
 	for _, o := range entities {
-		resBody = append(resBody, JSONUserURLs{ShortUrl: "http://" + h.getFullURL(o.ShortUrl), OriginalURL: o.OriginalURL})
+		resBody = append(resBody, JSONUserURLs{ShortUrl: h.getFullURL(o.ShortUrl), OriginalURL: o.OriginalURL})
 	}
 	resBodyJson, err := json.Marshal(&resBody)
 	if err != nil {
