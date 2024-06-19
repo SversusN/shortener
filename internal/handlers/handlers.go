@@ -172,11 +172,11 @@ func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Reques
 			return
 		}
 		var mapResp map[string]string
-		userDb, ok := h.s.(storage.UserStorage)
+		userDB, ok := h.s.(storage.UserStorage)
 		if !ok || userIDInt == -1 {
 			mapResp, err = h.s.SetURLBatch(saveUrls)
 		} else {
-			mapResp, err = userDb.SetUserURLBatch(saveUrls, userIDInt)
+			mapResp, err = userDB.SetUserURLBatch(saveUrls, userIDInt)
 		}
 		for s := range mapResp {
 			i := indexOfURL(mapResp[s], reqBody)
@@ -280,7 +280,7 @@ func indexOfURL(element string, data []JSONBatchRequest) int {
 func getUserIDFromCtx(r *http.Request) (int, error) {
 	userID := r.Context().Value("UserID")
 	if userID == nil {
-		return -1, errors.New("User ID is missing")
+		return -1, errors.New("user ID is missing")
 	}
 	userIDInt, ok := userID.(int)
 	if !ok {

@@ -13,10 +13,10 @@ import (
 )
 
 const (
-	TokenExp   = time.Minute * 180
-	SecretKey  = "secret"
-	NameCookie = "Token"
-	CtxUser    = ctxUser("UserID")
+	TokenExp           = time.Minute * 180
+	SecretKey          = "secret"
+	NameCookie         = "Token"
+	CtxUser    ctxUser = "UserID"
 )
 
 type ctxUser string
