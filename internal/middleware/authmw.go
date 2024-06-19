@@ -73,7 +73,7 @@ func (a AuthMW) AuthMWfunc(next http.Handler) http.Handler {
 				return
 			} else {
 				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte("clear cookie data"))
+				w.Write([]byte("pls, clear cookie data"))
 			}
 		}
 		saver, ok := a.db.(storage.UserStorage)
