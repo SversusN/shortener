@@ -63,7 +63,7 @@ func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 		key := utils.GenerateShortKey()
 		userDb, ok := h.s.(storage.UserStorage)
 		var result string
-		if !ok && userIDInt == -1 {
+		if !ok || userIDInt == -1 {
 			result, err = h.s.SetURL(key, string(originalURL))
 		} else {
 			result, err = userDb.SetUserURL(key, string(originalURL), userIDInt)
