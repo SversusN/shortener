@@ -223,7 +223,11 @@ func (h *Handlers) HandlerDBPing(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h *Handlers) HandlerGetUserURLs(w http.ResponseWriter, r *http.Request) {
-
+	_, err := r.Cookie(mw.NameCookie)
+	if err != nil {
+		http.Error(w, "Bad Token, no token in cookie", http.StatusUnauthorized)
+		return
+	}
 	userDB, ok := h.s.(storage.UserStorage)
 	if !ok {
 		http.Error(w, "No DB for request, sorry...", http.StatusUnauthorized)
@@ -245,6 +249,7 @@ func (h *Handlers) HandlerGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		http.Error(w, "Bad userID", http.StatusUnauthorized)
+		return
 	}
 	entities, ok := mapRest.([]dbstorage.UserURLEntity)
 	if !ok {
