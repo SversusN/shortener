@@ -31,6 +31,7 @@ func NewDB(connectionString string, ctx *context.Context) (*PostgresDB, error) {
 		return nil, fmt.Errorf("failed to ping PostgreSQL connection: %w", err)
 	}
 	_, err = db.ExecContext(*ctx, `
+		DROP TABLE IF EXISTS URLS;
 		CREATE TABLE IF NOT EXISTS URLS 
 		(short_url varchar(100) NOT NULL,
 		original_url varchar(1000) NOT NULL,

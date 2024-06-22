@@ -282,7 +282,6 @@ func (h *Handlers) HandlerDeleteUserURLs(w http.ResponseWriter, r *http.Request)
 	if userIDInt == -1 {
 		http.Error(w, "No userID, bad token data", http.StatusUnauthorized)
 	}
-	w.Header().Set("Content-Type", "application/json")
 	deleteURLs := make([]string, 0)
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
