@@ -46,7 +46,7 @@ func NewHandlers(cfg *config.Config, s storage.Storage) *Handlers {
 	return &Handlers{cfg, s}
 }
 
-func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
+func (h *Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 	originalURL, err := io.ReadAll(req.Body)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -84,13 +84,17 @@ func (h Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h Handlers) HandlerGet(res http.ResponseWriter, req *http.Request) {
+func (h *Handlers) HandlerGet(res http.ResponseWriter, req *http.Request) {
 	key := chi.URLParam(req, "shortKey")
 	if key == "" {
 		http.Error(res, "Shortened key is missing", http.StatusBadRequest)
 		return
 	}
 	originalURL, err := h.s.GetURL(key)
+	if errors.Is(err, internalerrors.ErrDeleted) {
+		http.Error(res, err.Error(), http.StatusGone)
+		return
+	}
 	if err != nil {
 		http.Error(res, "Shortened key not found", http.StatusBadRequest)
 		return
@@ -99,7 +103,7 @@ func (h Handlers) HandlerGet(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
+func (h *Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 	b, err := io.ReadAll(req.Body)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -146,7 +150,7 @@ func (h Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 	res.Write(resJSON)
 }
 
-func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Request) {
+func (h *Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Request) {
 	b, err := io.ReadAll(req.Body)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -201,7 +205,7 @@ func (h Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Reques
 	res.Write(resBody)
 }
 
-func (h Handlers) HandlerDBPing(res http.ResponseWriter, req *http.Request) {
+func (h *Handlers) HandlerDBPing(res http.ResponseWriter, req *http.Request) {
 	pinger, ok := h.s.(storage.Pinger)
 	if !ok {
 		http.Error(res, "No DB to ping , sorry...", http.StatusBadRequest)
@@ -218,12 +222,8 @@ func (h Handlers) HandlerDBPing(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h Handlers) HandlerGetUserURLs(w http.ResponseWriter, r *http.Request) {
-	_, err := r.Cookie("Token")
-	if err != nil {
-		http.Error(w, "Bad Token, no token in cookie", http.StatusUnauthorized)
-		return
-	}
+func (h *Handlers) HandlerGetUserURLs(w http.ResponseWriter, r *http.Request) {
+
 	userDB, ok := h.s.(storage.UserStorage)
 	if !ok {
 		http.Error(w, "No DB for request, sorry...", http.StatusInternalServerError)
@@ -269,6 +269,39 @@ func (h Handlers) HandlerGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	w.Write(resBodyJSON)
 }
 
+func (h *Handlers) HandlerDeleteUserURLs(w http.ResponseWriter, r *http.Request) {
+
+	userDB, ok := h.s.(storage.UserStorage)
+	if !ok {
+		http.Error(w, "No DB for request, sorry...", http.StatusInternalServerError)
+	}
+	userIDInt, err := getUserIDFromCtx(r)
+	if errors.Is(err, internalerrors.ErrUserTypeError) {
+		http.Error(w, "Bad userID, need Int data", http.StatusBadRequest)
+	}
+	if userIDInt == -1 {
+		http.Error(w, "No userID, bad token data", http.StatusUnauthorized)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	deleteURLs := make([]string, 0)
+	b, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Bad JSON", http.StatusInternalServerError)
+	}
+	err = json.Unmarshal(b, &deleteURLs)
+	if err != nil {
+		http.Error(w, "Bad JSON", http.StatusInternalServerError)
+	}
+	deleteCh, err := userDB.DeleteUserURLs(userIDInt)
+	go func() {
+		defer close(deleteCh)
+		for _, key := range deleteURLs {
+			deleteCh <- key
+		}
+	}()
+	w.WriteHeader(http.StatusAccepted)
+}
+
 func indexOfURL(element string, data []JSONBatchRequest) int {
 	for k, v := range data {
 		if element == v.OriginalURL {
@@ -291,6 +324,6 @@ func getUserIDFromCtx(r *http.Request) (int, error) {
 	}
 }
 
-func (h Handlers) getFullURL(result string) string {
+func (h *Handlers) getFullURL(result string) string {
 	return fmt.Sprint(h.cfg.FlagBaseAddress, "/", result)
 }

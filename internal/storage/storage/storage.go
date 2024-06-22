@@ -17,4 +17,5 @@ type UserStorage interface {
 	CreateUser(ctx context.Context) (int, error)
 	SetUserURL(id string, targetURL string, userID int) (string, error)
 	SetUserURLBatch(u map[string]string, userID int) (map[string]string, error)
+	DeleteUserURLs(userID int) (chan string, error)
 }

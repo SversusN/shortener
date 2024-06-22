@@ -31,7 +31,11 @@ func NewDB(connectionString string, ctx *context.Context) (*PostgresDB, error) {
 		return nil, fmt.Errorf("failed to ping PostgreSQL connection: %w", err)
 	}
 	_, err = db.ExecContext(*ctx, `
-		CREATE TABLE IF NOT EXISTS URLS (short_url varchar(100) NOT NULL, original_url varchar(1000) NOT NULL, user_id int );
+		CREATE TABLE IF NOT EXISTS URLS 
+		(short_url varchar(100) NOT NULL,
+		original_url varchar(1000) NOT NULL,
+		user_id INT,
+		is_deleted BOOL);
 		CREATE UNIQUE INDEX IF NOT EXISTS original_url_idx ON URLS (original_url);`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create table URLs: %w", err)
@@ -61,12 +65,18 @@ func (pg *PostgresDB) Close() {
 }
 
 func (pg *PostgresDB) GetURL(shortURL string) (string, error) {
-	query := "SELECT original_url FROM URLS WHERE short_url=$1"
+	query := "SELECT original_url, is_deleted FROM URLS WHERE short_url=$1"
 	row := pg.db.QueryRowContext(pg.ctx, query, shortURL)
-	var originalURL string
-	err := row.Scan(&originalURL)
+	var (
+		originalURL string
+		isDeleted   bool
+	)
+	err := row.Scan(&originalURL, &isDeleted)
 	if err != nil {
 		return "", fmt.Errorf("failed to query short URL: %w", err)
+	}
+	if isDeleted {
+		return "", internalerrors.ErrDeleted
 	}
 	return originalURL, nil
 }
@@ -194,7 +204,7 @@ func (pg *PostgresDB) CreateUser(ctx context.Context) (int, error) {
 
 func (pg *PostgresDB) GetUserUrls(userID int) (any, error) {
 	result := make([]UserURLEntity, 0)
-	query := "SELECT short_url, original_url FROM URLS WHERE user_id = $1;"
+	query := "SELECT short_url, original_url FROM URLS WHERE user_id = $1 and is_deleted = FALSE;"
 	rows, err := pg.db.QueryContext(pg.ctx, query, userID)
 	if err != nil || rows.Err() != nil {
 		return nil, errors.New("error postgres get userUrls")
@@ -215,4 +225,41 @@ func (pg *PostgresDB) GetUserUrls(userID int) (any, error) {
 		return nil, internalerrors.ErrNotFound
 	}
 	return result, err
+}
+
+func (pg *PostgresDB) DeleteUserURLs(userID int) (deletedURLs chan string, err error) {
+
+	deletedURLs = make(chan string)
+	tx, err := pg.db.BeginTx(pg.ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("tran error: %w", err)
+	}
+	query := "UPDATE URLS SET is_deleted = true WHERE short_url = $1 AND user_id = $2;"
+	go func() {
+	chanloop:
+		for {
+			select {
+			case key, ok := <-deletedURLs:
+				{
+					if !ok {
+						break chanloop
+
+					}
+					_, err = tx.ExecContext(pg.ctx, query, key, userID)
+					if err != nil {
+						tx.Rollback()
+						return
+					}
+				}
+			case <-pg.ctx.Done(): //if cancel in future
+				{
+					tx.Rollback()
+					break chanloop
+				}
+			}
+		}
+		tx.Commit()
+	}()
+
+	return deletedURLs, nil
 }

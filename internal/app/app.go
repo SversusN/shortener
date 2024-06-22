@@ -63,6 +63,7 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 			r.Post("/shorten", hnd.HandlerJSONPost)
 			r.Post("/shorten/batch", hnd.HandlerJSONPostBatch)
 			r.Get("/user/urls", hnd.HandlerGetUserURLs)
+			r.Delete("/user/urls", hnd.HandlerDeleteUserURLs)
 		})
 	})
 	return r

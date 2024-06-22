@@ -11,6 +11,7 @@ var (
 	ErrNotFound                 = errors.New("key not found")
 	ErrUserTypeError            = errors.New("user type error")
 	ErrUserNotFound             = errors.New("user not found error")
+	ErrDeleted                  = errors.New("try get deleted error")
 )
 
 type ConflictError struct {

@@ -79,28 +79,29 @@ func (a AuthMW) AuthMWfunc(next http.Handler) http.Handler {
 				w.WriteHeader(http.StatusBadRequest)
 				w.Write([]byte("pls, clear cookie data"))
 			}
+		} else { //hohoho
+			saver, ok := a.db.(storage.UserStorage)
+			if !ok {
+				return
+			}
+			userID, err := saver.CreateUser(r.Context())
+			if err != nil {
+				log.Print("err while creating new user in auth mw")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			token, err := BuildNewToken(userID)
+			if err != nil {
+				log.Print("err while building new token")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			http.SetCookie(w, &http.Cookie{
+				Name:  NameCookie,
+				Value: token,
+			})
+			ctx := context.WithValue(r.Context(), CtxUser, userID)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		}
-		saver, ok := a.db.(storage.UserStorage)
-		if !ok {
-			return
-		}
-		userID, err := saver.CreateUser(r.Context())
-		if err != nil {
-			log.Print("err while creating new user in auth mw")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		token, err := BuildNewToken(userID)
-		if err != nil {
-			log.Print("err while building new token")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		http.SetCookie(w, &http.Cookie{
-			Name:  NameCookie,
-			Value: token,
-		})
-		ctx := context.WithValue(r.Context(), CtxUser, userID)
-		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
