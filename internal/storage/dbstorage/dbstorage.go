@@ -35,7 +35,7 @@ func NewDB(connectionString string, ctx *context.Context) (*PostgresDB, error) {
 		(short_url varchar(100) NOT NULL,
 		original_url varchar(1000) NOT NULL,
 		user_id INT,
-		is_deleted BOOL);
+		is_deleted BOOL default FALSE);
 		CREATE UNIQUE INDEX IF NOT EXISTS original_url_idx ON URLS (original_url);`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create table URLs: %w", err)
