@@ -65,7 +65,7 @@ func (pg *PostgresDB) Close() {
 }
 
 func (pg *PostgresDB) GetURL(shortURL string) (string, error) {
-	query := "SELECT original_url, COALESCE(is_deleted, FALSE) FROM URLS WHERE short_url=$1"
+	query := "SELECT original_url, COALESCE(is_deleted, FALSE) as is_deleted FROM URLS WHERE short_url=$1"
 	row := pg.db.QueryRowContext(pg.ctx, query, shortURL)
 	var (
 		originalURL string
