@@ -226,7 +226,7 @@ func (h *Handlers) HandlerGetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	userDB, ok := h.s.(storage.UserStorage)
 	if !ok {
-		http.Error(w, "No DB for request, sorry...", http.StatusInternalServerError)
+		http.Error(w, "No DB for request, sorry...", http.StatusUnauthorized)
 		return
 	}
 	userIDInt, err := getUserIDFromCtx(r)
@@ -244,7 +244,7 @@ func (h *Handlers) HandlerGetUserURLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		http.Error(w, "Bad userID", http.StatusBadRequest)
+		http.Error(w, "Bad userID", http.StatusUnauthorized)
 	}
 	entities, ok := mapRest.([]dbstorage.UserURLEntity)
 	if !ok {
@@ -293,6 +293,9 @@ func (h *Handlers) HandlerDeleteUserURLs(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "Bad JSON", http.StatusInternalServerError)
 	}
 	deleteCh, err := userDB.DeleteUserURLs(userIDInt)
+	if err != nil {
+		http.Error(w, "Bad userID", http.StatusBadRequest)
+	}
 	go func() {
 		defer close(deleteCh)
 		for _, key := range deleteURLs {
