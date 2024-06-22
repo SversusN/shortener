@@ -31,7 +31,6 @@ func NewDB(connectionString string, ctx *context.Context) (*PostgresDB, error) {
 		return nil, fmt.Errorf("failed to ping PostgreSQL connection: %w", err)
 	}
 	_, err = db.ExecContext(*ctx, `
-		DROP TABLE IF EXISTS URLS;
 		CREATE TABLE IF NOT EXISTS URLS 
 		(short_url varchar(100) NOT NULL,
 		original_url varchar(1000) NOT NULL,
@@ -66,7 +65,7 @@ func (pg *PostgresDB) Close() {
 }
 
 func (pg *PostgresDB) GetURL(shortURL string) (string, error) {
-	query := "SELECT original_url, is_deleted FROM URLS WHERE short_url=$1"
+	query := "SELECT original_url, COALESCE(is_deleted, FALSE) FROM URLS WHERE short_url=$1"
 	row := pg.db.QueryRowContext(pg.ctx, query, shortURL)
 	var (
 		originalURL string
