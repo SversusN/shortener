@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/SversusN/shortener/internal/storage/storage"
-	"github.com/google/uuid"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
+
+	"github.com/SversusN/shortener/internal/storage/storage"
 )
 
 const (

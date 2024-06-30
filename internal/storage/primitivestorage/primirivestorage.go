@@ -2,10 +2,10 @@ package primitivestorage
 
 import (
 	"errors"
-	"github.com/SversusN/shortener/internal/internalerrors"
 	"log"
 	"sync"
 
+	"github.com/SversusN/shortener/internal/internalerrors"
 	"github.com/SversusN/shortener/internal/pkg/utils"
 	entity "github.com/SversusN/shortener/internal/storage/dbstorage"
 )

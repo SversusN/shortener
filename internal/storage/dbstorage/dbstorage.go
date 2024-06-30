@@ -6,11 +6,13 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"github.com/SversusN/shortener/internal/internalerrors"
-	utils "github.com/SversusN/shortener/internal/pkg/migrator"
+	"log"
+
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"log"
+
+	"github.com/SversusN/shortener/internal/internalerrors"
+	utils "github.com/SversusN/shortener/internal/pkg/migrator"
 )
 
 type PostgresDB struct {
