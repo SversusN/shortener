@@ -52,11 +52,11 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 	r := chi.NewRouter()
 	r.Use(a.Logger.LoggingMW())
 	r.Use(mw.GzipMiddleware)
-	r.Use(mw.NewAuthMW(a.Storage).AuthMWfunc)
+	r.Use(mw.NewAuthMW().AuthMWfunc)
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", hnd.HandlerPost)
-		r.Get("/{shortKey}", hnd.HandlerGet)
 		r.Get("/ping", hnd.HandlerDBPing)
+		r.Get("/{shortKey}", hnd.HandlerGet)
 		r.Route("/api", func(r chi.Router) {
 			r.Post("/shorten", hnd.HandlerJSONPost)
 			r.Post("/shorten/batch", hnd.HandlerJSONPostBatch)

@@ -31,8 +31,8 @@ type AuthMW struct {
 	db storage.Storage
 }
 
-func NewAuthMW(db storage.Storage) *AuthMW {
-	return &AuthMW{db: db}
+func NewAuthMW() *AuthMW {
+	return &AuthMW{}
 }
 
 func BuildNewToken(userID string) (string, error) {
