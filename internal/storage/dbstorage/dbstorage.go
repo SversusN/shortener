@@ -3,20 +3,23 @@ package dbstorage
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"errors"
 	"fmt"
-	"log"
-
+	"github.com/SversusN/shortener/internal/internalerrors"
+	utils "github.com/SversusN/shortener/internal/pkg/migrator"
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
-
-	"github.com/SversusN/shortener/internal/internalerrors"
+	"log"
 )
 
 type PostgresDB struct {
 	ctx context.Context
 	db  *sql.DB
 }
+
+//go:embed migrations/*.sql
+var MigrationsFS embed.FS
 
 func NewDB(ctx context.Context, connectionString string) (*PostgresDB, error) {
 	db, err := sql.Open("pgx", connectionString)
@@ -31,17 +34,15 @@ func NewDB(ctx context.Context, connectionString string) (*PostgresDB, error) {
 		}
 		return nil, fmt.Errorf("failed to ping PostgreSQL connection: %w", err)
 	}
-	_, err = db.ExecContext(ctx, `
-		CREATE TABLE IF NOT EXISTS URLS 
-		(short_url varchar(100) NOT NULL,
-		original_url varchar(1000) NOT NULL,
-		user_id uuid,
-		is_deleted BOOL default FALSE);
-		CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_original ON URLS(original_url) WHERE is_deleted = FALSE;`)
+
+	const migrationsDir = "migrations"
+
+	migrator := utils.MustGetNewMigrator(MigrationsFS, migrationsDir)
+	err = migrator.ApplyMigrations(db)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create table URLs: %w", err)
 	}
-
+	log.Println("Migrations applied!")
 	return &PostgresDB{
 		db:  db,
 		ctx: ctx,
