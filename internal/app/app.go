@@ -2,7 +2,7 @@ package app
 
 import (
 	"context"
-	"github.com/SversusN/shortener/internal/storage/dbstorage"
+
 	"log"
 	"net/http"
 
@@ -14,6 +14,7 @@ import (
 	"github.com/SversusN/shortener/internal/logger"
 	mw "github.com/SversusN/shortener/internal/middleware"
 	"github.com/SversusN/shortener/internal/pkg/utils"
+	"github.com/SversusN/shortener/internal/storage/dbstorage"
 	"github.com/SversusN/shortener/internal/storage/primitivestorage"
 	"github.com/SversusN/shortener/internal/storage/storage"
 )
@@ -36,7 +37,7 @@ func New() *App {
 	if cfg.DataBaseDSN == "" {
 		ns = primitivestorage.NewStorage(fh, err)
 	} else {
-		ns, err = dbstorage.NewDB(cfg.DataBaseDSN, ctx)
+		ns, err = dbstorage.NewDB(ctx, cfg.DataBaseDSN)
 		if err != nil {
 			log.Fatalln("Failed to connect to database", err)
 		}
@@ -51,13 +52,18 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 	r := chi.NewRouter()
 	r.Use(a.Logger.LoggingMW())
 	r.Use(mw.GzipMiddleware)
+	r.Use(mw.NewAuthMW().AuthMWfunc)
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", hnd.HandlerPost)
-		r.Get("/{shortKey}", hnd.HandlerGet)
 		r.Get("/ping", hnd.HandlerDBPing)
+		r.Get("/{shortKey}", hnd.HandlerGet)
 		r.Route("/api", func(r chi.Router) {
 			r.Post("/shorten", hnd.HandlerJSONPost)
 			r.Post("/shorten/batch", hnd.HandlerJSONPostBatch)
+			r.Group(func(r chi.Router) { //secure
+				r.Get("/user/urls", hnd.HandlerGetUserURLs)
+				r.Delete("/user/urls", hnd.HandlerDeleteUserURLs)
+			})
 		})
 	})
 	return r

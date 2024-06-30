@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -46,7 +47,7 @@ func TestRouter(t *testing.T) {
 	a.Storage = primitivestorage.NewStorage(nil, errors.New("dont need file"))
 	//Для хендлеров тоже мап
 	a.Handlers = handlers.NewHandlers(a.Config, a.Storage)
-	a.Storage.SetURL("sk", "http://example.com")
+	a.Storage.SetURL("sk", "http://example.com", uuid.NewString())
 	ts := httptest.NewServer(a.CreateRouter(*a.Handlers))
 
 	defer ts.Close()
@@ -106,6 +107,12 @@ func TestRouter(t *testing.T) {
 			path:         "/api/shorten/batch",
 			expectedCode: http.StatusCreated,
 			contentType:  "application/json",
+		},
+		{
+			name:         "Get user URL Test. Bad NO auth",
+			method:       http.MethodGet,
+			path:         "/api/user/urls",
+			expectedCode: http.StatusUnauthorized,
 		},
 	}
 
