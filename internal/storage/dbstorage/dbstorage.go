@@ -23,10 +23,16 @@ type PostgresDB struct {
 //go:embed migrations/*.sql
 var MigrationsFS embed.FS
 
+const migrationsDir = "migrations"
+
 func NewDB(ctx context.Context, connectionString string) (*PostgresDB, error) {
 	db, err := sql.Open("pgx", connectionString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open connection to postgresql: %w", err)
+	}
+	//pool, err := pgxpool.New(context.Background(), connectionString)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create a connection pool: %w", err)
 	}
 	err = db.Ping()
 	if err != nil {
@@ -36,8 +42,6 @@ func NewDB(ctx context.Context, connectionString string) (*PostgresDB, error) {
 		}
 		return nil, fmt.Errorf("failed to ping PostgreSQL connection: %w", err)
 	}
-
-	const migrationsDir = "migrations"
 
 	migrator := utils.MustGetNewMigrator(MigrationsFS, migrationsDir)
 	err = migrator.ApplyMigrations(db)
