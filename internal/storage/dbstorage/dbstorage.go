@@ -30,10 +30,6 @@ func NewDB(ctx context.Context, connectionString string) (*PostgresDB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open connection to postgresql: %w", err)
 	}
-	//pool, err := pgxpool.New(context.Background(), connectionString)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create a connection pool: %w", err)
-	}
 	err = db.Ping()
 	if err != nil {
 		err := db.Close()
