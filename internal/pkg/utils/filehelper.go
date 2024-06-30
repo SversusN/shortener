@@ -8,12 +8,13 @@ import (
 	"sync"
 
 	"github.com/SversusN/shortener/config"
+	entity "github.com/SversusN/shortener/internal/storage/dbstorage"
 )
 
 type Fields struct {
-	UUID        int    `json:"uuid"`
-	OriginalURL string `json:"original_url"`
-	ShortKey    string `json:"short_url"`
+	UUID     int            `json:"uuid"`
+	UserURL  entity.UserURL `json:"user_url"`
+	ShortKey string         `json:"short_url"`
 }
 
 type FileHelper struct {
@@ -34,14 +35,36 @@ func NewFileHelper(filename string) (*FileHelper, error) {
 	}
 	return &FileHelper{file: file}, nil
 }
-func (fh FileHelper) WriteFile(uuid int, originalURL string, shortKey string) {
-	t := Fields{UUID: uuid, OriginalURL: originalURL, ShortKey: shortKey}
+func (fh FileHelper) WriteFile(uuid int, shortURL string, userURL entity.UserURL) {
+	t := Fields{UUID: uuid, ShortKey: shortURL, UserURL: userURL}
 	jt, _ := json.Marshal(t)
 	jt = append(jt, '\n')
 	_, err := fh.file.Write(jt)
 	if err != nil {
 		return
 	}
+}
+
+// rewritefile after delete
+func (fh FileHelper) RMFile(data *sync.Map) error {
+	err := os.Truncate(fh.file.Name(), 0)
+	if err != nil {
+		return errors.New("cannot remove file")
+	}
+	tmpMap := make(map[string]entity.UserURL)
+	//https://stackoverflow.com/questions/46390409/how-to-decode-json-strings-to-sync-map-instead-of-normal-map-in-go1-9
+	data.Range(func(k, v interface{}) bool {
+		if k != nil {
+			tmpMap[k.(string)] = v.(entity.UserURL)
+		}
+		return true
+	})
+	i := 1
+	for k, v := range tmpMap {
+		fh.WriteFile(i, k, v)
+		i++
+	}
+	return nil
 }
 
 func (fh FileHelper) ReadFile() *sync.Map {
@@ -55,7 +78,7 @@ func (fh FileHelper) ReadFile() *sync.Map {
 				//при пустом файле data - nil
 				return &tempMap
 			}
-			tempMap.LoadOrStore(fields.ShortKey, fields.OriginalURL)
+			tempMap.LoadOrStore(fields.ShortKey, fields.UserURL)
 		}
 	}
 	return &tempMap

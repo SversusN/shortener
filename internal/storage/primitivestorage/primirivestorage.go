@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/SversusN/shortener/internal/pkg/utils"
+	entity "github.com/SversusN/shortener/internal/storage/dbstorage"
 )
 
 type MapStorage struct {
@@ -29,22 +30,27 @@ func NewStorage(helper *utils.FileHelper, err error) *MapStorage {
 }
 
 func (m *MapStorage) GetURL(id string) (string, error) {
-	originalURL, ok := m.data.Load(id)
+	userURL, ok := m.data.Load(id)
 	if !ok {
 		return "", errors.New("original url not found")
 	}
-	s := originalURL.(string)
+	s := userURL.(entity.UserURL).OriginalURL
 	return s, nil
 }
 
-func (m *MapStorage) SetURL(shortURL string, originalURL string) (string, error) {
-	result, err := m.GetKey(originalURL)
+func (m *MapStorage) SetURL(shortURL string, originalURL string, userID string) (string, error) {
+
+	userURL := entity.UserURL{
+		UserID:      userID,
+		OriginalURL: originalURL,
+	}
+	result, err := m.GetKey(userURL)
 	switch {
 	case errors.Is(err, internalerrors.ErrNotFound):
 		{
-			_, loaded := m.data.LoadOrStore(shortURL, originalURL)
+			_, loaded := m.data.LoadOrStore(shortURL, userURL)
 			if m.helper != nil {
-				m.helper.WriteFile(lenSyncMap(m.data), originalURL, shortURL)
+				m.helper.WriteFile(lenSyncMap(m.data), shortURL, userURL)
 			}
 			if loaded {
 				log.Println("key is already in the storage")
@@ -62,8 +68,8 @@ func (m *MapStorage) SetURL(shortURL string, originalURL string) (string, error)
 	}
 }
 
-func (m *MapStorage) SetURLBatch(u map[string]string) (map[string]string, error) {
-	returned := make(map[string]string)
+func (m *MapStorage) SetURLBatch(u map[string]entity.UserURL) (map[string]entity.UserURL, error) {
+	returned := make(map[string]entity.UserURL)
 	var possibleDoubleError error
 	for s := range u {
 		result, err := m.GetKey(u[s])
@@ -82,7 +88,7 @@ func (m *MapStorage) SetURLBatch(u map[string]string) (map[string]string, error)
 		case errors.Is(err, internalerrors.ErrOriginalURLAlreadyExists):
 			{
 				possibleDoubleError = err
-				returned[s] = result
+				returned[result] = u[s]
 			}
 		default:
 			{
@@ -93,14 +99,45 @@ func (m *MapStorage) SetURLBatch(u map[string]string) (map[string]string, error)
 	return returned, possibleDoubleError
 }
 
-func (m *MapStorage) GetKey(url string) (string, error) {
-	var storedKey string
-	var ok bool
+func (m *MapStorage) GetUserUrls(userID string) (any, error) {
+	result := make([]entity.UserURLEntity, 0)
 	m.data.Range(func(key, value interface{}) bool {
-		if value == url {
+		if value.(entity.UserURL).UserID == userID {
+			result = append(result, entity.UserURLEntity{
+				ShortURL:    key.(string),
+				OriginalURL: value.(entity.UserURL).OriginalURL})
+			return true
+		}
+		return false
+	})
+	if len(result) == 0 {
+		return nil, internalerrors.ErrNotFound
+	}
+	return result, nil
+}
+
+func (m *MapStorage) DeleteUserURLs(userID string) (deletedURLs chan string, err error) {
+	deletedURLs = make(chan string)
+	go func() {
+		for key := range deletedURLs {
+			m.data.Delete(key)
+		}
+		err := m.helper.RMFile(m.data)
+		if err != nil {
+			return
+		}
+	}()
+	return deletedURLs, nil
+}
+
+func (m *MapStorage) GetKey(userURL entity.UserURL) (string, error) {
+	var storedKey string
+	ok := false
+	m.data.Range(func(key, value interface{}) bool {
+		if value.(entity.UserURL).OriginalURL == userURL.OriginalURL {
 			storedKey = key.(string)
 			ok = true
-			return true
+			return false
 		}
 		return false
 	})

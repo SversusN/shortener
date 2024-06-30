@@ -7,17 +7,18 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/SversusN/shortener/internal/internalerrors"
 )
 
 type PostgresDB struct {
-	db  *sql.DB
 	ctx context.Context
+	db  *sql.DB
 }
 
-func NewDB(connectionString string, ctx *context.Context) (*PostgresDB, error) {
+func NewDB(ctx context.Context, connectionString string) (*PostgresDB, error) {
 	db, err := sql.Open("pgx", connectionString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open connection to postgresql: %w", err)
@@ -30,27 +31,20 @@ func NewDB(connectionString string, ctx *context.Context) (*PostgresDB, error) {
 		}
 		return nil, fmt.Errorf("failed to ping PostgreSQL connection: %w", err)
 	}
-	_, err = db.ExecContext(*ctx, `
+	_, err = db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS URLS 
 		(short_url varchar(100) NOT NULL,
 		original_url varchar(1000) NOT NULL,
-		user_id INT,
+		user_id uuid,
 		is_deleted BOOL default FALSE);
-		CREATE UNIQUE INDEX IF NOT EXISTS original_url_idx ON URLS (original_url);`)
+		CREATE UNIQUE INDEX idx_unique_original ON URLS(original_url) WHERE is_deleted = FALSE;`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create table URLs: %w", err)
-	}
-	_, err = db.ExecContext(*ctx, `
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY
-        );`)
-	if err != nil {
-		return nil, fmt.Errorf("postgres exec (create users): %w", err)
 	}
 
 	return &PostgresDB{
 		db:  db,
-		ctx: *ctx,
+		ctx: ctx,
 	}, nil
 }
 
@@ -81,32 +75,20 @@ func (pg *PostgresDB) GetURL(shortURL string) (string, error) {
 	return originalURL, nil
 }
 
-func (pg *PostgresDB) SetURL(shortURL string, originalURL string) (string, error) {
-	tx, err := pg.db.Begin()
-	if err != nil {
-		tx.Rollback()
-		return "", fmt.Errorf("failed to begin transaction: %w", err)
+func (pg *PostgresDB) SetURL(shortURL string, originalURL string, userID string) (string, error) {
+	if userID == "" {
+		userID = uuid.Nil.String()
 	}
-	var keyExist string
-	queryCheck := "SELECT short_url FROM URLS WHERE original_url=$1 LIMIT 1 FOR UPDATE"
-	query := "INSERT INTO URLS (short_url, original_url) VALUES ($1, $2)"
-	errKeyExist := tx.QueryRowContext(pg.ctx, queryCheck, originalURL).Scan(&keyExist)
-	if errors.Is(errKeyExist, sql.ErrNoRows) {
-		tx.QueryRowContext(pg.ctx, query, shortURL, originalURL)
-		tx.Commit()
-		return shortURL, nil
-	} else {
-		tx.Commit()
-		return keyExist, internalerrors.ErrOriginalURLAlreadyExists
-	}
-}
 
-func (pg *PostgresDB) SetUserURL(shortURL string, originalURL string, userID int) (string, error) {
 	tx, err := pg.db.Begin()
 	if err != nil {
-		tx.Rollback()
 		return "", fmt.Errorf("failed to begin transaction: %w", err)
 	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
 	var keyExist string
 	queryCheck := "SELECT short_url FROM URLS WHERE original_url=$1 LIMIT 1 FOR UPDATE"
 	query := "INSERT INTO URLS (short_url, original_url, user_id) VALUES ($1, $2, $3)"
@@ -116,56 +98,31 @@ func (pg *PostgresDB) SetUserURL(shortURL string, originalURL string, userID int
 		tx.Commit()
 		return shortURL, nil
 	} else {
-		tx.Commit()
+		tx.Rollback()
 		return keyExist, internalerrors.ErrOriginalURLAlreadyExists
 	}
 }
 
-func (pg *PostgresDB) SetURLBatch(u map[string]string) (map[string]string, error) {
-	result := make(map[string]string)
+func (pg *PostgresDB) SetURLBatch(u map[string]UserURL) (map[string]UserURL, error) {
+	result := make(map[string]UserURL)
 	tx, err := pg.db.Begin()
 	if err != nil {
-		tx.Rollback()
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	queryCheck := "SELECT short_url FROM URLS WHERE original_url=$1 LIMIT 1 FOR UPDATE"
-	query := "INSERT INTO URLS (short_url, original_url) VALUES ($1, $2)"
-	var possibleError error
-	for s := range u {
-		var keyExist string
-		errBlankKey := tx.QueryRowContext(pg.ctx, queryCheck, u[s]).Scan(&keyExist)
-		if errors.Is(errBlankKey, sql.ErrNoRows) {
-			tx.QueryRowContext(pg.ctx, query, s, u[s])
-			result[s] = u[s]
-		} else {
-			possibleError = internalerrors.ErrOriginalURLAlreadyExists
-			result[keyExist] = u[s]
-		}
-	}
-	err = tx.Commit()
-	if err != nil {
-		err := tx.Rollback()
+	defer func() {
 		if err != nil {
-			return nil, err
+			tx.Rollback()
 		}
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
-	}
-	return result, possibleError
-}
+	}()
 
-func (pg *PostgresDB) SetUserURLBatch(u map[string]string, userID int) (map[string]string, error) {
-	result := make(map[string]string)
-	tx, err := pg.db.Begin()
-	if err != nil {
-		tx.Rollback()
-	}
 	queryCheck := "SELECT short_url FROM URLS WHERE original_url=$1 LIMIT 1 FOR UPDATE"
 	query := "INSERT INTO URLS (short_url, original_url, user_id) VALUES ($1, $2, $3)"
 	var possibleError error
 	for s := range u {
 		var keyExist string
-		errBlankKey := tx.QueryRowContext(pg.ctx, queryCheck, u[s]).Scan(&keyExist)
+		errBlankKey := tx.QueryRowContext(pg.ctx, queryCheck, u[s].OriginalURL).Scan(&keyExist)
 		if errors.Is(errBlankKey, sql.ErrNoRows) {
-			tx.QueryRowContext(pg.ctx, query, s, u[s], userID)
+			tx.QueryRowContext(pg.ctx, query, s, u[s].OriginalURL, u[s].UserID)
 			result[s] = u[s]
 		} else {
 			possibleError = internalerrors.ErrOriginalURLAlreadyExists
@@ -191,22 +148,11 @@ func (pg *PostgresDB) Ping() error {
 	return nil
 }
 
-func (pg *PostgresDB) CreateUser(ctx context.Context) (int, error) {
-	//https://stackoverflow.com/questions/55923755/postgres-insert-without-any-values-for-columns-all-are-default
-	query := "INSERT INTO USERS DEFAULT VALUES RETURNING id;"
-	var userID int
-	err := pg.db.QueryRowContext(ctx, query).Scan(&userID)
-	if err != nil {
-		return 0, errors.New("postgres create userId")
-	}
-	return userID, nil
-}
-
-func (pg *PostgresDB) GetUserUrls(userID int) (any, error) {
+func (pg *PostgresDB) GetUserUrls(userID string) (any, error) {
 	result := make([]UserURLEntity, 0)
 	query := "SELECT short_url, original_url FROM URLS WHERE user_id = $1 and is_deleted = FALSE;"
 	rows, err := pg.db.QueryContext(pg.ctx, query, userID)
-	if err != nil || rows.Err() != nil {
+	if err != nil {
 		return nil, errors.New("error postgres get userUrls")
 	}
 	defer rows.Close()
@@ -220,6 +166,9 @@ func (pg *PostgresDB) GetUserUrls(userID int) (any, error) {
 			return nil, err
 		}
 		result = append(result, resultRow)
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
 	}
 	if count == 0 {
 		return nil, internalerrors.ErrNotFound
@@ -227,15 +176,20 @@ func (pg *PostgresDB) GetUserUrls(userID int) (any, error) {
 	return result, err
 }
 
-func (pg *PostgresDB) DeleteUserURLs(userID int) (deletedURLs chan string, err error) {
-
+func (pg *PostgresDB) DeleteUserURLs(userID string) (deletedURLs chan string, err error) {
 	deletedURLs = make(chan string)
 	tx, err := pg.db.BeginTx(pg.ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("tran error: %w", err)
 	}
-	query := "UPDATE URLS SET is_deleted = true WHERE short_url = $1 AND user_id = $2;"
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+	query := "UPDATE URLS set is_deleted = true WHERE user_id = $1 AND short_url = ANY($2);"
 	go func() {
+		var forDelete []string //= make([]string, 0, 10)
 	chanloop:
 		for {
 			select {
@@ -243,9 +197,8 @@ func (pg *PostgresDB) DeleteUserURLs(userID int) (deletedURLs chan string, err e
 				{
 					if !ok {
 						break chanloop
-
 					}
-					_, err = tx.ExecContext(pg.ctx, query, key, userID)
+					forDelete = append(forDelete, key)
 					if err != nil {
 						tx.Rollback()
 						return
@@ -258,7 +211,14 @@ func (pg *PostgresDB) DeleteUserURLs(userID int) (deletedURLs chan string, err e
 				}
 			}
 		}
-		tx.Commit()
+		_, err = tx.ExecContext(pg.ctx, query, userID, forDelete)
+		if err != nil {
+			return
+		}
+		err := tx.Commit()
+		if err != nil {
+			return
+		}
 	}()
 
 	return deletedURLs, nil

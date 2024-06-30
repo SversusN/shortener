@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+
 	"log"
 	"net/http"
 
@@ -36,7 +37,7 @@ func New() *App {
 	if cfg.DataBaseDSN == "" {
 		ns = primitivestorage.NewStorage(fh, err)
 	} else {
-		ns, err = dbstorage.NewDB(cfg.DataBaseDSN, &ctx)
+		ns, err = dbstorage.NewDB(ctx, cfg.DataBaseDSN)
 		if err != nil {
 			log.Fatalln("Failed to connect to database", err)
 		}
@@ -51,10 +52,7 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 	r := chi.NewRouter()
 	r.Use(a.Logger.LoggingMW())
 	r.Use(mw.GzipMiddleware)
-	//ИД пользователя выдает постгрес, иначе мв не включаем
-	if _, ok := a.Storage.(storage.UserStorage); ok {
-		r.Use(mw.NewAuthMW(a.Storage).AuthMWfunc)
-	}
+	r.Use(mw.NewAuthMW(a.Storage).AuthMWfunc)
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", hnd.HandlerPost)
 		r.Get("/{shortKey}", hnd.HandlerGet)
@@ -62,8 +60,10 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 		r.Route("/api", func(r chi.Router) {
 			r.Post("/shorten", hnd.HandlerJSONPost)
 			r.Post("/shorten/batch", hnd.HandlerJSONPostBatch)
-			r.Get("/user/urls", hnd.HandlerGetUserURLs)
-			r.Delete("/user/urls", hnd.HandlerDeleteUserURLs)
+			r.Group(func(r chi.Router) { //secure
+				r.Get("/user/urls", hnd.HandlerGetUserURLs)
+				r.Delete("/user/urls", hnd.HandlerDeleteUserURLs)
+			})
 		})
 	})
 	return r
