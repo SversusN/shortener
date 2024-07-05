@@ -169,9 +169,9 @@ func (pg *PostgresDB) GetUserUrls(userID string) (any, error) {
 			return nil, err
 		}
 		result = append(result, resultRow)
-		if err := rows.Err(); err != nil {
-			return nil, err
-		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	if count == 0 {
 		return nil, internalerrors.ErrNotFound
