@@ -2,9 +2,9 @@ package app
 
 import (
 	"context"
-
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
@@ -43,7 +43,7 @@ func New() *App {
 		}
 	}
 	nh := handlers.NewHandlers(cfg, ns)
-	lg := logger.CreateLogger(zap.NewAtomicLevelAt(zap.InfoLevel)) //Хардкод TODO
+	lg := logger.CreateLogger(zap.NewAtomicLevelAt(zap.InfoLevel))
 
 	return &App{cfg, ns, nh, lg, fh, ctx}
 }
@@ -64,6 +64,7 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 				r.Get("/user/urls", hnd.HandlerGetUserURLs)
 				r.Delete("/user/urls", hnd.HandlerDeleteUserURLs)
 			})
+
 		})
 	})
 	return r
@@ -71,6 +72,9 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 
 func (a App) Run() {
 	r := a.CreateRouter(*a.Handlers)
+	go func() {
+		log.Println(http.ListenAndServe("localhost:90", nil))
+	}()
 	log.Printf("running on %s\n", a.Config.FlagAddress)
 	log.Fatal(
 		http.ListenAndServe(a.Config.FlagAddress, r), "упали...")

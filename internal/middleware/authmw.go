@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -46,7 +45,7 @@ func BuildNewToken(userID string) (string, error) {
 
 	stringToken, err := token.SignedString([]byte(SecretKey))
 	if err != nil {
-		return "", fmt.Errorf("building new jwt: %w", err)
+		return "", errors.New("error signing token")
 	}
 	return stringToken, nil
 }
