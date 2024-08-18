@@ -13,6 +13,7 @@ import (
 	"github.com/SversusN/shortener/internal/storage/storage"
 )
 
+// Константные настройки
 const (
 	TokenExp           = time.Minute * 180 //Время жизни токена
 	SecretKey          = "secret"          // секретный ключ
@@ -20,6 +21,7 @@ const (
 	CtxUser    ctxUser = "UserID"          //поле ид пользователя в куки
 )
 
+// ctxUser требуется для передачи пользователя в контексте
 type ctxUser string
 
 // Claims тиа для указания UserID

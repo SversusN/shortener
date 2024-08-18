@@ -21,10 +21,12 @@ type ConflictError struct {
 	ShortURL string
 }
 
+// Error имплементация внутренней ошибки
 func (e ConflictError) Error() string {
 	return fmt.Sprintf("conflict: short URL already exists: %v", e.ShortURL)
 }
 
+// NewConflictError конструктор для формирования "правильной ошибки"
 func NewConflictError(err error, text string) error {
 	return &ConflictError{Err: err, ShortURL: text}
 }

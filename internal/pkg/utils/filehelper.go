@@ -37,6 +37,8 @@ func NewFileHelper(filename string) (*FileHelper, error) {
 	}
 	return &FileHelper{file: file}, nil
 }
+
+// WriteFile запись map в файл для сохранения после рестарта.
 func (fh FileHelper) WriteFile(uuid int, shortURL string, userURL entity.UserURL) {
 	t := Fields{UUID: uuid, ShortKey: shortURL, UserURL: userURL}
 	jt, _ := json.Marshal(t)
