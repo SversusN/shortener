@@ -1,3 +1,4 @@
+// Пакет подключения хранения в файле
 package utils
 
 import (
@@ -11,19 +12,20 @@ import (
 	entity "github.com/SversusN/shortener/internal/storage/dbstorage"
 )
 
+// Fields Поля объекта хранения URL
 type Fields struct {
 	UUID     int            `json:"uuid"`
 	UserURL  entity.UserURL `json:"user_url"`
 	ShortKey string         `json:"short_url"`
 }
 
+// FileHelper структура для работы с файлом
 type FileHelper struct {
 	file *os.File
 	c    *config.Config
 }
 
-// возвращаем хелпер или ошибку, чтобы выключить сохранение в файл
-
+// NewFileHelper возвращаем хелпер или ошибку, чтобы выключить сохранение в файл
 func NewFileHelper(filename string) (*FileHelper, error) {
 	if filename == "" {
 		return nil, errors.New("filename is empty, no store tempdb")
@@ -45,7 +47,7 @@ func (fh FileHelper) WriteFile(uuid int, shortURL string, userURL entity.UserURL
 	}
 }
 
-// rewritefile after delete
+// RMFile Перезаписываем файл после того как отработает удаление
 func (fh FileHelper) RMFile(data *sync.Map) error {
 	err := os.Truncate(fh.file.Name(), 0)
 	if err != nil {
@@ -67,6 +69,7 @@ func (fh FileHelper) RMFile(data *sync.Map) error {
 	return nil
 }
 
+// ReadFile чтение файла для формирования sync.Map
 func (fh FileHelper) ReadFile() *sync.Map {
 	tempMap := sync.Map{}
 	if fh.file != nil {

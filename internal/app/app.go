@@ -1,3 +1,4 @@
+// App собирает зависимости приложения (конфигурация, хранилище, логгер)
 package app
 
 import (
@@ -19,21 +20,22 @@ import (
 	"github.com/SversusN/shortener/internal/storage/storage"
 )
 
+// App структура приложения
 type App struct {
-	Config     *config.Config
-	Storage    storage.Storage
-	Handlers   *handlers.Handlers
-	Logger     *logger.ServerLogger
-	FileHelper *utils.FileHelper
-	Context    context.Context
+	Config     *config.Config       // Объект конфигурации
+	Storage    storage.Storage      // Интерфейс хранилища
+	Handlers   *handlers.Handlers   //Объект http обработчиков
+	Logger     *logger.ServerLogger //Внедорение логера
+	FileHelper *utils.FileHelper    //Работа с файлом
+	Context    context.Context      //Контекст приложения
 }
 
+// App Конструктор пакета, создает целевой объект приложения с нужными зависимостями
 func New() *App {
 	var ns storage.Storage
 	cfg := config.NewConfig()
-	ctx := context.Background() //TODO https://habr.com/ru/articles/771626/
+	ctx := context.Background()
 	fh, err := utils.NewFileHelper(cfg.FlagFilePath)
-	//DB
 	if cfg.DataBaseDSN == "" {
 		ns = primitivestorage.NewStorage(fh, err)
 	} else {
@@ -48,11 +50,13 @@ func New() *App {
 	return &App{cfg, ns, nh, lg, fh, ctx}
 }
 
+// CreateRouter Создание роутера Chi
 func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 	r := chi.NewRouter()
 	r.Use(a.Logger.LoggingMW())
 	r.Use(mw.GzipMiddleware)
 	r.Use(mw.NewAuthMW().AuthMWfunc)
+	//Инициализация маршрута для роутера Chi
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", hnd.HandlerPost)
 		r.Get("/ping", hnd.HandlerDBPing)
@@ -70,6 +74,7 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 	return r
 }
 
+// Run Создание роутера веб сервера и запуск веб сервера
 func (a App) Run() {
 	r := a.CreateRouter(*a.Handlers)
 	go func() {

@@ -1,3 +1,4 @@
+// Пакет вспомогательных функций
 package utils
 
 import (
@@ -6,6 +7,7 @@ import (
 	"log"
 )
 
+// GenerateShortKey формирует ключ короткой ссылки
 func GenerateShortKey() string {
 	b := make([]byte, 8)
 	_, err := rand.Read(b)
