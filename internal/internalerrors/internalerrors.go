@@ -6,6 +6,7 @@ import (
 	"fmt"
 )
 
+// Инициализация внутренних ошибок проекта
 var (
 	ErrOriginalURLAlreadyExists = errors.New("original url already exists") // Оригинальный URL есть в хранилище
 	ErrKeyAlreadyExists         = errors.New("key already exists")          //BUG(SversusN) Сокращенный ключ был выдан. Коллизия астрономически мала
