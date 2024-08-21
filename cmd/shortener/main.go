@@ -1,3 +1,4 @@
+// main создает и запускает приложение.
 package main
 
 import (

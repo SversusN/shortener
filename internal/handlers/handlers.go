@@ -1,3 +1,4 @@
+// Handlers пакет для функционирования http-обработчиков
 package handlers
 
 import (
@@ -18,34 +19,46 @@ import (
 	"github.com/SversusN/shortener/internal/storage/storage"
 )
 
+// Handlers тип для внедрения зависимости
 type Handlers struct {
 	cfg *config.Config
 	s   storage.Storage
 }
 
+// JSONRequest передача JSON Объекта в обработчик
 type JSONRequest struct {
 	URL string `json:"url"`
 }
+
+// JSONResponse JSON ответ
 type JSONResponse struct {
 	Result string `json:"result"`
 }
+
+// JSONBatchRequest пакет URL JSON формат запрос
 type JSONBatchRequest struct {
 	CorrelationID string `json:"correlation_id"`
 	OriginalURL   string `json:"original_url"`
 }
+
+// JSONBatchResponse пакет URL JSON формат ответ
 type JSONBatchResponse struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortenedURL  string `json:"short_url"`
 }
+
+// JSONUserURLs ответ для пользовательских URL
 type JSONUserURLs struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
 
+// NewHandlers инициализация объекта handlers
 func NewHandlers(cfg *config.Config, s storage.Storage) *Handlers {
 	return &Handlers{cfg, s}
 }
 
+// HandlerPost получает оригинальный URL для сокращения в формате text\plain
 func (h *Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 	originalURL, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -80,6 +93,7 @@ func (h *Handlers) HandlerPost(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// HandlerGet получает сокращенный URL для перенаправления
 func (h *Handlers) HandlerGet(res http.ResponseWriter, req *http.Request) {
 	key := chi.URLParam(req, "shortKey")
 	if key == "" {
@@ -99,6 +113,7 @@ func (h *Handlers) HandlerGet(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusTemporaryRedirect)
 }
 
+// HandlerJSONPost получает URL для сокращения в JSON формате
 func (h *Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 	b, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -142,6 +157,7 @@ func (h *Handlers) HandlerJSONPost(res http.ResponseWriter, req *http.Request) {
 	res.Write(resJSON)
 }
 
+// HandlerJSONPostBatch сохраняет пакет в JSON формате
 func (h *Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Request) {
 	b, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -197,6 +213,7 @@ func (h *Handlers) HandlerJSONPostBatch(res http.ResponseWriter, req *http.Reque
 	res.Write(resBody)
 }
 
+// HandlerDBPing проверяет возможность использования БД
 func (h *Handlers) HandlerDBPing(res http.ResponseWriter, req *http.Request) {
 	pinger, ok := h.s.(storage.Pinger)
 	if !ok {
@@ -214,6 +231,7 @@ func (h *Handlers) HandlerDBPing(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// HandlerGetUserURLs получение пользователя из Cookie
 func (h *Handlers) HandlerGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	_, err := r.Cookie(mw.NameCookie)
 	if err != nil {
@@ -261,6 +279,8 @@ func (h *Handlers) HandlerGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	w.Write(resBodyJSON)
 }
 
+// HandlerDeleteUserURLs - запускает процесс удаления URL
+// Удаление происходит асинхронно
 func (h *Handlers) HandlerDeleteUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := getUserIDFromCtx(r)
@@ -279,10 +299,12 @@ func (h *Handlers) HandlerDeleteUserURLs(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		http.Error(w, "Bad JSON", http.StatusInternalServerError)
 	}
+	// Создается канал с наполнением URL для удаления
 	deleteCh, err := h.s.DeleteUserURLs(userID)
 	if err != nil {
 		http.Error(w, "Bad userID", http.StatusBadRequest)
 	}
+	// Заполнение канала deleteCh для репозитория
 	go func() {
 		defer close(deleteCh)
 		for _, key := range deleteURLs {
@@ -292,6 +314,8 @@ func (h *Handlers) HandlerDeleteUserURLs(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusAccepted)
 }
 
+// indexOfURL получает индекс или возвращает -1
+// -1 обозначает, что значение не было найдено
 func indexOfURL(element string, data []JSONBatchRequest) int {
 	for k, v := range data {
 		if element == v.OriginalURL {
@@ -301,6 +325,7 @@ func indexOfURL(element string, data []JSONBatchRequest) int {
 	return -1 //not found.
 }
 
+// getUserIDFromCtx попытка получить ИД пользователя из Cookie
 func getUserIDFromCtx(r *http.Request) (string, error) {
 	userID := r.Context().Value(mw.CtxUser)
 	if userID == nil {
@@ -314,6 +339,7 @@ func getUserIDFromCtx(r *http.Request) (string, error) {
 	}
 }
 
+// getFullURL - создает валидную полноценную ссылку из адреса и короткого ключа
 func (h *Handlers) getFullURL(result string) string {
 	return fmt.Sprint(h.cfg.FlagBaseAddress, "/", result)
 }

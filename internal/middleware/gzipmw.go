@@ -1,3 +1,4 @@
+// middleware Пакет сжатия данных
 package middleware
 
 import (
@@ -9,11 +10,13 @@ import (
 	"strings"
 )
 
+// GzipResponseWriter тип объекта lkz ьшввдуцфку
 type GzipResponseWriter struct {
 	http.ResponseWriter
 	Writer io.Writer
 }
 
+// Write запись gzip body
 func (w *GzipResponseWriter) Write(b []byte) (int, error) {
 	write, err := w.Writer.Write(b)
 	if err != nil {
@@ -22,6 +25,9 @@ func (w *GzipResponseWriter) Write(b []byte) (int, error) {
 	return write, nil
 }
 
+// GzipMiddleware функция для gzip middleware
+
+// Проверяется content-type функция сжатия включается только для клиентов с соответствующей поддержкой
 func GzipMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Handle gzip request body

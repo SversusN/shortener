@@ -1,3 +1,4 @@
+// Пакет dbstorage описывает поведение БД
 package dbstorage
 
 import (
@@ -15,6 +16,7 @@ import (
 	utils "github.com/SversusN/shortener/internal/pkg/migrator"
 )
 
+// PostgresDB структура для реализации sql.DB с помощью драйвера для PostgreSQL
 type PostgresDB struct {
 	ctx context.Context
 	db  *sql.DB
@@ -23,8 +25,10 @@ type PostgresDB struct {
 //go:embed migrations/*.sql
 var MigrationsFS embed.FS
 
+// migrationsDir - локальная папка с миграциями
 const migrationsDir = "migrations"
 
+// NewDB конструктор для объекта БД
 func NewDB(ctx context.Context, connectionString string) (*PostgresDB, error) {
 	db, err := sql.Open("pgx", connectionString)
 	if err != nil {
@@ -51,6 +55,7 @@ func NewDB(ctx context.Context, connectionString string) (*PostgresDB, error) {
 	}, nil
 }
 
+// Close -метод закрытия соединения
 func (pg *PostgresDB) Close() {
 	if pg.db != nil {
 		err := pg.db.Close()
@@ -61,6 +66,7 @@ func (pg *PostgresDB) Close() {
 	}
 }
 
+// GetURL - реализация метода получения единичной ссылки
 func (pg *PostgresDB) GetURL(shortURL string) (string, error) {
 	query := "SELECT original_url, COALESCE(is_deleted, FALSE) as is_deleted FROM URLS WHERE short_url=$1"
 	row := pg.db.QueryRowContext(pg.ctx, query, shortURL)
@@ -78,6 +84,7 @@ func (pg *PostgresDB) GetURL(shortURL string) (string, error) {
 	return originalURL, nil
 }
 
+// SetURL реализация метода сохранения едичничной ссылки
 func (pg *PostgresDB) SetURL(shortURL string, originalURL string, userID string) (string, error) {
 	if userID == "" {
 		userID = uuid.Nil.String()
@@ -106,6 +113,7 @@ func (pg *PostgresDB) SetURL(shortURL string, originalURL string, userID string)
 	}
 }
 
+// SetURLBatch сохранение массива ссылок
 func (pg *PostgresDB) SetURLBatch(u map[string]UserURL) (map[string]UserURL, error) {
 	result := make(map[string]UserURL)
 	tx, err := pg.db.Begin()
@@ -143,6 +151,7 @@ func (pg *PostgresDB) SetURLBatch(u map[string]UserURL) (map[string]UserURL, err
 	return result, possibleError
 }
 
+// Ping - метод проверки соединения с БД Postgre
 func (pg *PostgresDB) Ping() error {
 	err := pg.db.Ping()
 	if err != nil {
@@ -151,6 +160,7 @@ func (pg *PostgresDB) Ping() error {
 	return nil
 }
 
+// GetUserUrls получение массива ссылок  с фильтром пользователя
 func (pg *PostgresDB) GetUserUrls(userID string) (any, error) {
 	result := make([]UserURLEntity, 0)
 	query := "SELECT short_url, original_url FROM URLS WHERE user_id = $1 and is_deleted = FALSE;"
@@ -179,6 +189,7 @@ func (pg *PostgresDB) GetUserUrls(userID string) (any, error) {
 	return result, err
 }
 
+// DeleteUserURLs реализация асинхронного удаления ссылок по ИД пользователя
 func (pg *PostgresDB) DeleteUserURLs(userID string) (deletedURLs chan string, err error) {
 	deletedURLs = make(chan string)
 	tx, err := pg.db.BeginTx(pg.ctx, nil)

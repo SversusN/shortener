@@ -1,3 +1,4 @@
+// Config содержит поля конфигурации.
 package config
 
 import (
@@ -8,22 +9,25 @@ import (
 	"strings"
 )
 
+// Config структура с полями конфигурации
 type Config struct {
-	FlagAddress     string
-	FlagBaseAddress string
-	FlagFilePath    string
-	DataBaseDSN     string
+	FlagAddress     string //Адрес запуска сервера
+	FlagBaseAddress string //Базовый URL
+	FlagFilePath    string //Флаг для хранения файла
+	DataBaseDSN     string //Строка соединения с БД
 }
 
+// NewConfig конструктор для внедрения зависимостей
 func NewConfig() (c *Config) {
 	currentDir, _ := os.Getwd() //плоховато работает на винде
+	//Инициализация с переменными по умолчанию
 	c = &Config{
 		FlagAddress:     ":8080",
 		FlagBaseAddress: "http://localhost:8080",
 		FlagFilePath:    fmt.Sprint(currentDir, "/tmp/short-url-db.json"),
 		DataBaseDSN:     os.Getenv("DATABASE_DSN"),
 	}
-	// указываем ссылку на переменную, имя флага, значение по умолчанию и описание
+	// Указываем ссылку на переменную, имя флага, значение по умолчанию и описание
 	flag.StringVar(&c.FlagAddress, "a", c.FlagAddress, "set server IP address")
 	flag.Func("b", "URL for redirect", func(flagValue string) error {
 		hp := strings.Split(flagValue, ":")
@@ -40,7 +44,7 @@ func NewConfig() (c *Config) {
 	flag.StringVar(&c.FlagFilePath, "f", c.FlagFilePath, "set file path")
 	flag.StringVar(&c.DataBaseDSN, "d", c.DataBaseDSN, "Database connection string")
 	flag.Parse()
-
+	// Считаем переменные окружения более приоритетными перед флагами
 	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
 		c.FlagAddress = envRunAddr
 	}

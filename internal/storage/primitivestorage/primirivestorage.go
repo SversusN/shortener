@@ -1,3 +1,4 @@
+// Пакет primitivestorage для работы с сохранением map в файл
 package primitivestorage
 
 import (
@@ -10,12 +11,13 @@ import (
 	entity "github.com/SversusN/shortener/internal/storage/dbstorage"
 )
 
+// MapStorage cnhernehf c потокобезопасной map и файлом
 type MapStorage struct {
 	data   *sync.Map
 	helper *utils.FileHelper
 }
 
-// NewStorage хелпер межет придти nil
+// NewStorage хелпер межет придти nil, в этом случае сохранение в файл не работает
 func NewStorage(helper *utils.FileHelper, err error) *MapStorage {
 	if err != nil {
 		return &MapStorage{
@@ -29,6 +31,7 @@ func NewStorage(helper *utils.FileHelper, err error) *MapStorage {
 	}
 }
 
+// GetURL реализация получения единичной ссылки
 func (m *MapStorage) GetURL(id string) (string, error) {
 	userURL, ok := m.data.Load(id)
 	if !ok {
@@ -38,6 +41,7 @@ func (m *MapStorage) GetURL(id string) (string, error) {
 	return s, nil
 }
 
+// SetURL реализация установки единичной ссылки
 func (m *MapStorage) SetURL(shortURL string, originalURL string, userID string) (string, error) {
 
 	userURL := entity.UserURL{
@@ -68,6 +72,7 @@ func (m *MapStorage) SetURL(shortURL string, originalURL string, userID string) 
 	}
 }
 
+// SetURLBatch пакетное сохранение ссылок в файл
 func (m *MapStorage) SetURLBatch(u map[string]entity.UserURL) (map[string]entity.UserURL, error) {
 	returned := make(map[string]entity.UserURL)
 	var possibleDoubleError error
@@ -99,6 +104,7 @@ func (m *MapStorage) SetURLBatch(u map[string]entity.UserURL) (map[string]entity
 	return returned, possibleDoubleError
 }
 
+// GetUserUrls получение пользовательских ссылок по фильтру ИД пользователя
 func (m *MapStorage) GetUserUrls(userID string) (any, error) {
 	result := make([]entity.UserURLEntity, 0)
 	m.data.Range(func(key, value interface{}) bool {
@@ -116,6 +122,7 @@ func (m *MapStorage) GetUserUrls(userID string) (any, error) {
 	return result, nil
 }
 
+// DeleteUserURLs асинхронное удаление ссылок
 func (m *MapStorage) DeleteUserURLs(userID string) (deletedURLs chan string, err error) {
 	deletedURLs = make(chan string)
 	go func() {
@@ -130,6 +137,7 @@ func (m *MapStorage) DeleteUserURLs(userID string) (deletedURLs chan string, err
 	return deletedURLs, nil
 }
 
+// GetKey получение ключа из sync.Map
 func (m *MapStorage) GetKey(userURL entity.UserURL) (string, error) {
 	var storedKey string
 	ok := false
@@ -148,6 +156,7 @@ func (m *MapStorage) GetKey(userURL entity.UserURL) (string, error) {
 	}
 }
 
+// lenSyncMap размер map
 func lenSyncMap(m *sync.Map) int {
 	var i int
 	m.Range(func(k, v interface{}) bool {
