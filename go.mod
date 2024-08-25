@@ -2,6 +2,7 @@ module github.com/SversusN/shortener
 
 go 1.21.9
 
+
 require (
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/golang-jwt/jwt/v4 v4.5.0
@@ -12,7 +13,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/tools v0.21.1-0.20240531212143-b6235391adb3
-	honnef.co/go/tools v0.5.1
+	honnef.co/go/tools v0.4.4
 )
 
 require (
