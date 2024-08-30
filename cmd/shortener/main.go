@@ -1,9 +1,9 @@
-// main создает и запускает приложение.
+// Пакет main создает и запускает приложение.
 package main
 
 import (
 	"fmt"
-	
+
 	"github.com/SversusN/shortener/internal/app"
 )
 
@@ -20,5 +20,4 @@ func main() {
 		buildCommit,
 	)
 	app.New().Run()
-
 }
