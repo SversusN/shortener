@@ -6,7 +6,6 @@
 package main
 
 import (
-	osexit "github.com/SversusN/shortener/cmd/staticlint/osexit"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/multichecker"
 	"golang.org/x/tools/go/analysis/passes/printf"
@@ -15,6 +14,8 @@ import (
 
 	"github.com/kisielk/errcheck/errcheck"
 	"honnef.co/go/tools/staticcheck" //staticcheck.io
+
+	osexit "github.com/SversusN/shortener/cmd/staticlint/osexit"
 )
 
 func main() {
