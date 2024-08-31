@@ -12,10 +12,9 @@ import (
 	"golang.org/x/tools/go/analysis/passes/shadow"
 	"golang.org/x/tools/go/analysis/passes/structtag"
 
+	"github.com/SversusN/shortener/cmd/staticlint/osexit"
 	"github.com/kisielk/errcheck/errcheck"
 	"honnef.co/go/tools/staticcheck" //staticcheck.io
-
-	osexit "github.com/SversusN/shortener/cmd/staticlint/osexit"
 )
 
 func main() {
@@ -30,7 +29,7 @@ func main() {
 	chks = append(
 		chks,
 		osexit.OSExitAnalyzer, // Проверяем os.Exit в main.
-		printf.Analyzer,       // Проверяем формтированную печать printf.
+		printf.Analyzer,       // Проверяем форматированную печать printf.
 		shadow.Analyzer,       // Проверяем shadow-переопределения.
 		structtag.Analyzer,    // Проверяем правильность типов структур.
 		errcheck.Analyzer,     // Проверяем обработку ошибок.

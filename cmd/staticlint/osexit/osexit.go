@@ -1,4 +1,4 @@
-package osexi
+package osexit
 
 import (
 	"go/ast"
@@ -45,7 +45,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		(*ast.FuncDecl)(nil),
 		(*ast.SelectorExpr)(nil),
 	}
-	mainInspecting := false
+	mainCheck := false
 	i.Preorder(nodeFilter, func(n ast.Node) {
 		switch x := n.(type) {
 		case *ast.File:
@@ -54,13 +54,13 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			}
 		case *ast.FuncDecl: // определение функции
 			f := isMainFunc(x)
-			if mainInspecting && !f { //еще раз main
-				mainInspecting = false
+			if mainCheck && !f { //еще раз main
+				mainCheck = false
 				return
 			}
-			mainInspecting = f
+			mainCheck = f
 		case *ast.SelectorExpr:
-			if isOsExit(x, mainInspecting) {
+			if isOsExit(x, mainCheck) {
 				return
 			}
 		}
