@@ -3,6 +3,7 @@ package app
 
 import (
 	"context"
+	"golang.org/x/crypto/acme/autocert"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -81,6 +82,27 @@ func (a App) Run() {
 		log.Println(http.ListenAndServe("localhost:90", nil))
 	}()
 	log.Printf("running on %s\n", a.Config.FlagAddress)
-	log.Fatal(
-		http.ListenAndServe(a.Config.FlagAddress, r), "упали...")
+	if a.Config.EnableHTTPS {
+		manager := &autocert.Manager{
+			// директория для хранения сертификатов
+			Cache: autocert.DirCache("cache-dir"),
+			// функция, принимающая Terms of Service издателя сертификатов
+			Prompt: autocert.AcceptTOS,
+			// перечень доменов, для которых будут поддерживаться сертификаты
+			HostPolicy: autocert.HostWhitelist("example.com"),
+		}
+		// конструируем сервер с поддержкой TLS
+		server := &http.Server{
+			Addr:    ":443",
+			Handler: r,
+			// для TLS-конфигурации используем менеджер сертификатов
+			TLSConfig: manager.TLSConfig(),
+		}
+		//запуск https
+		log.Fatal(
+			server.ListenAndServeTLS("", ""), "упали")
+	} else {
+		log.Fatal(
+			http.ListenAndServe(a.Config.FlagAddress, r), "упали...")
+	}
 }
