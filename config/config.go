@@ -11,6 +11,7 @@ import (
 	"strings"
 )
 
+// Cfg, Config для работы с JSON файлом
 var (
 	Cfg        Config // Cfg - переменная с конфигурацией
 	ConfigPath string
