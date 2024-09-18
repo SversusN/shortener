@@ -3,6 +3,7 @@ package storage
 
 import (
 	entity "github.com/SversusN/shortener/internal/storage/dbstorage"
+	"sync"
 )
 
 // Storage интерфейс описания методов хранилища
@@ -11,7 +12,7 @@ type Storage interface {
 	SetURL(id string, targetURL string, userID string) (string, error)
 	SetURLBatch(u map[string]entity.UserURL) (map[string]entity.UserURL, error)
 	GetUserUrls(userID string) (any, error)
-	DeleteUserURLs(userID string) (chan string, error)
+	DeleteUserURLs(userID string, group *sync.WaitGroup) (chan string, error)
 }
 
 // Pinger интерфейс для проверки соединения PostgreSQL

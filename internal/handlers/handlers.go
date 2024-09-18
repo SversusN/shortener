@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 
@@ -21,8 +22,9 @@ import (
 
 // Handlers тип для внедрения зависимости
 type Handlers struct {
-	cfg *config.Config
-	s   storage.Storage
+	cfg       *config.Config
+	s         storage.Storage
+	waitGroup *sync.WaitGroup
 }
 
 // JSONRequest передача JSON Объекта в обработчик
@@ -54,8 +56,8 @@ type JSONUserURLs struct {
 }
 
 // NewHandlers инициализация объекта handlers
-func NewHandlers(cfg *config.Config, s storage.Storage) *Handlers {
-	return &Handlers{cfg, s}
+func NewHandlers(cfg *config.Config, s storage.Storage, waitGroup *sync.WaitGroup) *Handlers {
+	return &Handlers{cfg, s, waitGroup}
 }
 
 // HandlerPost получает оригинальный URL для сокращения в формате text\plain
@@ -300,12 +302,14 @@ func (h *Handlers) HandlerDeleteUserURLs(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "Bad JSON", http.StatusInternalServerError)
 	}
 	// Создается канал с наполнением URL для удаления
-	deleteCh, err := h.s.DeleteUserURLs(userID)
+	deleteCh, err := h.s.DeleteUserURLs(userID, h.waitGroup)
 	if err != nil {
 		http.Error(w, "Bad userID", http.StatusBadRequest)
 	}
 	// Заполнение канала deleteCh для репозитория
+	h.waitGroup.Add(1)
 	go func() {
+		defer h.waitGroup.Done()
 		defer close(deleteCh)
 		for _, key := range deleteURLs {
 			deleteCh <- key

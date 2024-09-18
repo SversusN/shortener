@@ -9,6 +9,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -33,11 +34,13 @@ type App struct {
 	Logger     *logger.ServerLogger //Внедорение логера
 	FileHelper *utils.FileHelper    //Работа с файлом
 	Context    context.Context      //Контекст приложения
+	wg         *sync.WaitGroup
 }
 
 // App Конструктор пакета, создает целевой объект приложения с нужными зависимостями
 func New() *App {
 	var ns storage.Storage
+	wg := &sync.WaitGroup{}
 	cfg := config.NewConfig()
 	ctx := context.Background()
 	fh, err := utils.NewFileHelper(cfg.FlagFilePath)
@@ -49,10 +52,10 @@ func New() *App {
 			log.Fatalln("Failed to connect to database", err)
 		}
 	}
-	nh := handlers.NewHandlers(cfg, ns)
+	nh := handlers.NewHandlers(cfg, ns, wg)
 	lg := logger.CreateLogger(zap.NewAtomicLevelAt(zap.InfoLevel))
 
-	return &App{cfg, ns, nh, lg, fh, ctx}
+	return &App{cfg, ns, nh, lg, fh, ctx, wg}
 }
 
 // CreateRouter Создание роутера Chi
@@ -96,6 +99,8 @@ func (a App) Run() {
 		Addr:    a.Config.FlagAddress,
 		Handler: r,
 	}
+	wg := sync.WaitGroup{}
+	wg.Add(3)
 	//Ждем сигнала завершения
 	go func() {
 		<-sigint

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -190,7 +191,7 @@ func (pg *PostgresDB) GetUserUrls(userID string) (any, error) {
 }
 
 // DeleteUserURLs реализация асинхронного удаления ссылок по ИД пользователя
-func (pg *PostgresDB) DeleteUserURLs(userID string) (deletedURLs chan string, err error) {
+func (pg *PostgresDB) DeleteUserURLs(userID string, group *sync.WaitGroup) (deletedURLs chan string, err error) {
 	deletedURLs = make(chan string)
 	tx, err := pg.db.BeginTx(pg.ctx, nil)
 	if err != nil {
@@ -202,8 +203,10 @@ func (pg *PostgresDB) DeleteUserURLs(userID string) (deletedURLs chan string, er
 		}
 	}()
 	query := "UPDATE URLS set is_deleted = true WHERE user_id = $1 AND short_url = ANY($2);"
+	group.Add(1)
 	go func() {
 		var forDelete []string //= make([]string, 0, 10)
+		defer group.Done()
 	chanloop:
 		for {
 			select {
