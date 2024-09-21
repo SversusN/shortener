@@ -123,9 +123,11 @@ func (m *MapStorage) GetUserUrls(userID string) (any, error) {
 }
 
 // DeleteUserURLs асинхронное удаление ссылок
-func (m *MapStorage) DeleteUserURLs(userID string) (deletedURLs chan string, err error) {
+func (m *MapStorage) DeleteUserURLs(userID string, group *sync.WaitGroup) (deletedURLs chan string, err error) {
 	deletedURLs = make(chan string)
+	group.Add(1)
 	go func() {
+		group.Done()
 		for key := range deletedURLs {
 			m.data.Delete(key)
 		}

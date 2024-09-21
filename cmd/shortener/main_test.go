@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/google/uuid"
@@ -46,7 +47,8 @@ func TestRouter(t *testing.T) {
 	a.Storage = nil
 	a.Storage = primitivestorage.NewStorage(nil, errors.New("dont need file"))
 	//Для хендлеров тоже мап
-	a.Handlers = handlers.NewHandlers(a.Config, a.Storage)
+	wg := &sync.WaitGroup{}
+	a.Handlers = handlers.NewHandlers(a.Config, a.Storage, wg)
 	a.Storage.SetURL("sk", "http://example.com", uuid.NewString())
 	ts := httptest.NewServer(a.CreateRouter(*a.Handlers))
 

@@ -2,19 +2,28 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 )
 
+// Cfg, Config для работы с JSON файлом
+var (
+	Cfg        Config // Cfg - переменная с конфигурацией
+	ConfigPath string
+)
+
 // Config структура с полями конфигурации
 type Config struct {
-	FlagAddress     string //Адрес запуска сервера
-	FlagBaseAddress string //Базовый URL
-	FlagFilePath    string //Флаг для хранения файла
-	DataBaseDSN     string //Строка соединения с БД
+	FlagAddress     string `json:"flag_address"`      //Адрес запуска сервера
+	FlagBaseAddress string `json:"flag_base_address"` //Базовый URL
+	FlagFilePath    string `json:"flag_file_path"`    //Флаг для хранения файла
+	DataBaseDSN     string `json:"data_base_dsn"`     //Строка соединения с БД
+	EnableHTTPS     bool   `json:"enable_https"`      //Подключение tls соединения
 }
 
 // NewConfig конструктор для внедрения зависимостей
@@ -26,6 +35,15 @@ func NewConfig() (c *Config) {
 		FlagBaseAddress: "http://localhost:8080",
 		FlagFilePath:    fmt.Sprint(currentDir, "/tmp/short-url-db.json"),
 		DataBaseDSN:     os.Getenv("DATABASE_DSN"),
+		EnableHTTPS:     false,
+	}
+	// Получаем путь к конфигурационному файлу из переменных окружения, если указан
+	if configPath := os.Getenv("CONFIG_PATH"); configPath != "" {
+		ConfigPath = configPath
+		err := loadConfigFromFile()
+		if err != nil {
+			return
+		}
 	}
 	// Указываем ссылку на переменную, имя флага, значение по умолчанию и описание
 	flag.StringVar(&c.FlagAddress, "a", c.FlagAddress, "set server IP address")
@@ -43,6 +61,7 @@ func NewConfig() (c *Config) {
 	})
 	flag.StringVar(&c.FlagFilePath, "f", c.FlagFilePath, "set file path")
 	flag.StringVar(&c.DataBaseDSN, "d", c.DataBaseDSN, "Database connection string")
+	flag.BoolVar(&c.EnableHTTPS, "s", c.EnableHTTPS, "Enable secure connection")
 	flag.Parse()
 	// Считаем переменные окружения более приоритетными перед флагами
 	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
@@ -58,5 +77,27 @@ func NewConfig() (c *Config) {
 	if dataBaseDSN, ok := os.LookupEnv("DATABASE_DSN"); ok {
 		c.DataBaseDSN = dataBaseDSN
 	}
+	if _, ok := os.LookupEnv("ENABLE_HTTPS"); ok {
+		c.EnableHTTPS = true
+	}
+
 	return c
+}
+
+// loadConfigFromFile чтение JSON файла конфигурации
+func loadConfigFromFile() error {
+	if ConfigPath == "" {
+		log.Println("the path to the configuration file is empty")
+		return nil
+	}
+
+	data, err := os.ReadFile(ConfigPath)
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	if err = json.Unmarshal(data, &Cfg); err != nil {
+		return fmt.Errorf("failed to parse configuration: %w", err)
+	}
+	return nil
 }
