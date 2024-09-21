@@ -99,8 +99,6 @@ func (a App) Run() {
 		Addr:    a.Config.FlagAddress,
 		Handler: r,
 	}
-	wg := sync.WaitGroup{}
-	wg.Add(3)
 	//Ждем сигнала завершения
 	go func() {
 		<-sigint
