@@ -41,8 +41,13 @@ type App struct {
 func New() *App {
 	var ns storage.Storage
 	wg := &sync.WaitGroup{}
+
 	cfg := config.NewConfig()
 	ctx := context.Background()
+	ts, err := utils.GetCIDR(cfg.TrustedSubnet)
+	if err != nil {
+		log.Fatalln("Error parcing CIDR", err)
+	}
 	fh, err := utils.NewFileHelper(cfg.FlagFilePath)
 	if cfg.DataBaseDSN == "" {
 		ns = primitivestorage.NewStorage(fh, err)
@@ -52,7 +57,7 @@ func New() *App {
 			log.Fatalln("Failed to connect to database", err)
 		}
 	}
-	nh := handlers.NewHandlers(cfg, ns, wg)
+	nh := handlers.NewHandlers(cfg, ns, wg, ts)
 	lg := logger.CreateLogger(zap.NewAtomicLevelAt(zap.InfoLevel))
 
 	return &App{cfg, ns, nh, lg, fh, ctx, wg}
@@ -72,9 +77,13 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 		r.Route("/api", func(r chi.Router) {
 			r.Post("/shorten", hnd.HandlerJSONPost)
 			r.Post("/shorten/batch", hnd.HandlerJSONPostBatch)
-			r.Group(func(r chi.Router) { //secure
+			//secure
+			r.Group(func(r chi.Router) {
 				r.Get("/user/urls", hnd.HandlerGetUserURLs)
 				r.Delete("/user/urls", hnd.HandlerDeleteUserURLs)
+			})
+			r.Group(func(r chi.Router) {
+				r.Get("/internal/stats", hnd.HandlerGetStats)
 			})
 
 		})

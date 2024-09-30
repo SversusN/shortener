@@ -240,3 +240,30 @@ func (pg *PostgresDB) DeleteUserURLs(userID string, group *sync.WaitGroup) (dele
 
 	return deletedURLs, nil
 }
+
+func (pg *PostgresDB) GetStats() (usersCount int, URLsCount int, statError error) {
+
+	tx, err := pg.db.Begin()
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+	query := "SELECT COALESCE(count(*),0) as URLsCount FROM URLS WHERE is_deleted = FALSE;"
+	rows, err := tx.QueryContext(pg.ctx, query)
+	err = rows.Scan(URLsCount)
+	if err != nil {
+		return 0, 0, err
+	}
+	queryUsers := "SELECT COALESCE(count(distinct user_id),0) as usersCount FROM URLS WHERE is_deleted = FALSE;"
+	rowsUsers, err := tx.QueryContext(pg.ctx, queryUsers)
+	err = rowsUsers.Scan(usersCount)
+	if err != nil {
+		return 0, 0, err
+	}
+	tx.Commit()
+	return usersCount, URLsCount, nil
+}

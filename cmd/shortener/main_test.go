@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"github.com/SversusN/shortener/internal/pkg/utils"
 	"io"
 	"log"
 	"net/http"
@@ -48,11 +49,12 @@ func TestRouter(t *testing.T) {
 	a.Storage = primitivestorage.NewStorage(nil, errors.New("dont need file"))
 	//Для хендлеров тоже мап
 	wg := &sync.WaitGroup{}
-	a.Handlers = handlers.NewHandlers(a.Config, a.Storage, wg)
+	ts, _ := utils.GetCIDR("")
+	a.Handlers = handlers.NewHandlers(a.Config, a.Storage, wg, ts)
 	a.Storage.SetURL("sk", "http://example.com", uuid.NewString())
-	ts := httptest.NewServer(a.CreateRouter(*a.Handlers))
+	s := httptest.NewServer(a.CreateRouter(*a.Handlers))
 
-	defer ts.Close()
+	defer s.Close()
 
 	testCases := []struct {
 		name         string
@@ -116,12 +118,18 @@ func TestRouter(t *testing.T) {
 			path:         "/api/user/urls",
 			expectedCode: http.StatusUnauthorized,
 		},
+		{
+			name:         "Forbidden",
+			method:       http.MethodGet,
+			path:         "/api/internal/stats",
+			expectedCode: http.StatusForbidden,
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			resp, _ := testRequest(t, ts, tc.method, tc.path, tc.body)
+			resp, _ := testRequest(t, s, tc.method, tc.path, tc.body)
 			defer resp.Body.Close()
 
 			assert.Equal(t, tc.expectedCode, resp.StatusCode, "Response code is not correct")

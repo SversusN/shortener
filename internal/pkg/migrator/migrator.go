@@ -30,7 +30,7 @@ func MustGetNewMigrator(sqlFiles embed.FS, dirName string) *Migrator {
 	}
 }
 
-// ApplyMigrations Примерниеие миграций для DB из конфигурации
+// ApplyMigrations Применение миграций для DB из конфигурации
 func (m *Migrator) ApplyMigrations(db *sql.DB) error {
 	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
