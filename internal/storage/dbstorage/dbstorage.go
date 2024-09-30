@@ -241,6 +241,7 @@ func (pg *PostgresDB) DeleteUserURLs(userID string, group *sync.WaitGroup) (dele
 	return deletedURLs, nil
 }
 
+// GetStats получение количества ссылок и уникальных пользователей
 func (pg *PostgresDB) GetStats() (usersCount int, URLsCount int, statError error) {
 
 	tx, err := pg.db.Begin()

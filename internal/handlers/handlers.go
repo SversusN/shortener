@@ -324,8 +324,8 @@ func (h *Handlers) HandlerDeleteUserURLs(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusAccepted)
 }
 
+// HandlerGetStats получение статистической информации о ссылках/пользователях
 func (h *Handlers) HandlerGetStats(w http.ResponseWriter, r *http.Request) {
-
 	if h.trustSubnet == nil {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
