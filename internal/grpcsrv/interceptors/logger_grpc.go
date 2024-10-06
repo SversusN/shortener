@@ -5,7 +5,7 @@ import (
 	"go.uber.org/zap"
 	"time"
 
-	logger "github.com/SversusN/shortener/internal/logger"
+	"github.com/SversusN/shortener/internal/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 )

@@ -3,8 +3,6 @@ package app
 
 import (
 	"context"
-	"github.com/SversusN/shortener/internal/grpcsrv"
-	"golang.org/x/crypto/acme/autocert"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -20,6 +18,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/SversusN/shortener/config"
+	"github.com/SversusN/shortener/internal/grpcsrv"
 	"github.com/SversusN/shortener/internal/handlers"
 	"github.com/SversusN/shortener/internal/logger"
 	mw "github.com/SversusN/shortener/internal/middleware"
@@ -27,6 +26,7 @@ import (
 	"github.com/SversusN/shortener/internal/storage/dbstorage"
 	"github.com/SversusN/shortener/internal/storage/primitivestorage"
 	"github.com/SversusN/shortener/internal/storage/storage"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 // App структура приложения

@@ -3,12 +3,13 @@ package grpcsrv
 import (
 	"context"
 	"errors"
-	"github.com/SversusN/shortener/config"
-	"github.com/SversusN/shortener/internal/storage/primitivestorage"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"sync"
 	"testing"
+
+	"github.com/SversusN/shortener/config"
+	"github.com/SversusN/shortener/internal/storage/primitivestorage"
 )
 
 func TestCreateServer(t *testing.T) {

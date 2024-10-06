@@ -21,7 +21,7 @@ import (
 	"github.com/SversusN/shortener/internal/storage/storage"
 )
 
-// ShortenerServer описывает структуру gRPC сервера.
+// ShortenerServer описывает тип gRPC сервера.
 type ShortenerServer struct {
 	pb.UnimplementedShortenerServer
 	ctx     *context.Context
@@ -30,7 +30,7 @@ type ShortenerServer struct {
 	wg      *sync.WaitGroup
 }
 
-// NewGRPCServer создает и возвращает новый gRPC сервер.
+// NewGRPCServer создает и возвращает новый сервер.
 func NewGRPCServer(ctx *context.Context, storage storage.Storage, cfg *config.Config, wg *sync.WaitGroup) *grpc.Server {
 	authInterceptor := interceptors.NewAuthInterceptor(*ctx)
 	s := grpc.NewServer(
@@ -142,7 +142,7 @@ func (s *ShortenerServer) GetUserURLs(ctx context.Context, _ *pb.GetUsersURLsReq
 	return &response, nil
 }
 
-// DeleteUserURLs обрабатывает запрос на удаление сокращенных ссылок.
+// DeleteUserURLs обрабатывает запрос на удаление ссылок пользователя.
 func (s *ShortenerServer) DeleteUserURLs(ctx context.Context, in *pb.DeleteUserURLsReq) (*pb.DeleteUserURLsRes, error) {
 	var response pb.DeleteUserURLsRes
 	userID, err := utils.GetUserIDFromCtx(ctx, "user_id")
