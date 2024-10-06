@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"github.com/SversusN/shortener/internal/pkg/utils"
 	"io"
 	"log"
 	"net/http"
@@ -49,8 +48,7 @@ func TestRouter(t *testing.T) {
 	a.Storage = primitivestorage.NewStorage(nil, errors.New("dont need file"))
 	//Для хендлеров тоже мап
 	wg := &sync.WaitGroup{}
-	ts, _ := utils.GetCIDR("")
-	a.Handlers = handlers.NewHandlers(a.Config, a.Storage, wg, ts)
+	a.Handlers = handlers.NewHandlers(a.Config, a.Storage, wg)
 	a.Storage.SetURL("sk", "http://example.com", uuid.NewString())
 	s := httptest.NewServer(a.CreateRouter(*a.Handlers))
 

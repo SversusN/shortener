@@ -56,14 +56,9 @@ func New() *App {
 			log.Fatalln("Failed to connect to database", err)
 		}
 	}
-<<<<<<< Updated upstream
 	nh := handlers.NewHandlers(cfg, ns, wg)
-=======
-
-	nh := handlers.NewHandlers(cfg, ns, wg, ts)
 	gs := grpcsrv.NewGRPCServer(&ctx, ns, cfg, wg)
 
->>>>>>> Stashed changes
 	lg := logger.CreateLogger(zap.NewAtomicLevelAt(zap.InfoLevel))
 
 	return &App{cfg, ns, nh, lg, fh, ctx, wg, gs}
@@ -86,6 +81,9 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 			r.Group(func(r chi.Router) { //secure
 				r.Get("/user/urls", hnd.HandlerGetUserURLs)
 				r.Delete("/user/urls", hnd.HandlerDeleteUserURLs)
+			})
+			r.Group(func(r chi.Router) {
+				r.Get("/internal/stats", hnd.HandlerGetStats)
 			})
 
 		})

@@ -24,11 +24,8 @@ type Config struct {
 	FlagFilePath    string `json:"flag_file_path"`    //Флаг для хранения файла
 	DataBaseDSN     string `json:"data_base_dsn"`     //Строка соединения с БД
 	EnableHTTPS     bool   `json:"enable_https"`      //Подключение tls соединения
-<<<<<<< Updated upstream
-=======
 	TrustedSubnet   string `json:"trusted_subnet"`    //доверенная посеть
 	GRPCAddress     string `json:"grpc_address"`      //Адрес сервера grpc
->>>>>>> Stashed changes
 }
 
 // NewConfig конструктор для внедрения зависимостей
@@ -41,11 +38,8 @@ func NewConfig() (c *Config) {
 		FlagFilePath:    fmt.Sprint(currentDir, "/tmp/short-url-db.json"),
 		DataBaseDSN:     os.Getenv("DATABASE_DSN"),
 		EnableHTTPS:     false,
-<<<<<<< Updated upstream
-=======
 		TrustedSubnet:   "",
 		GRPCAddress:     "3200",
->>>>>>> Stashed changes
 	}
 	// Получаем путь к конфигурационному файлу из переменных окружения, если указан
 	if configPath := os.Getenv("CONFIG_PATH"); configPath != "" {
@@ -72,11 +66,8 @@ func NewConfig() (c *Config) {
 	flag.StringVar(&c.FlagFilePath, "f", c.FlagFilePath, "set file path")
 	flag.StringVar(&c.DataBaseDSN, "d", c.DataBaseDSN, "Database connection string")
 	flag.BoolVar(&c.EnableHTTPS, "s", c.EnableHTTPS, "Enable secure connection")
-<<<<<<< Updated upstream
-=======
 	flag.StringVar(&c.TrustedSubnet, "t", c.TrustedSubnet, "Trusted CIDR subnet")
 	flag.StringVar(&c.GRPCAddress, "g", ":3200", "Адрес запуска gRPC-сервера")
->>>>>>> Stashed changes
 	flag.Parse()
 	// Считаем переменные окружения более приоритетными перед флагами
 	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
@@ -95,15 +86,13 @@ func NewConfig() (c *Config) {
 	if _, ok := os.LookupEnv("ENABLE_HTTPS"); ok {
 		c.EnableHTTPS = true
 	}
-<<<<<<< Updated upstream
-=======
+
 	if trustedSubnet, ok := os.LookupEnv("TRUSTED_SUBNET"); ok {
 		c.TrustedSubnet = trustedSubnet
 	}
 	if trustedSubnet, ok := os.LookupEnv("GRPC_ADDRESS"); ok {
 		c.TrustedSubnet = trustedSubnet
 	}
->>>>>>> Stashed changes
 
 	return c
 }
