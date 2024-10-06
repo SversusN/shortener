@@ -9,7 +9,9 @@ import (
 )
 
 // Ключ с id пользователя.
-const UserIDMetaKey = "user_id"
+const UserIDMetaKey userID = "user_id"
+
+type userID string
 
 // AuthInterceptor описывает структуру интерцептора аутентификации
 type AuthInterceptor struct {
@@ -22,18 +24,17 @@ func NewAuthInterceptor(ctx context.Context) *AuthInterceptor {
 
 // AuthenticateUser идентифицирует пользователя в запросе.
 func (i *AuthInterceptor) AuthenticateUser(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	var err error
-	var userID string
+
+	var ID string
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		values := md.Get(UserIDMetaKey)
+		values := md.Get("user_id")
 		if len(values) > 0 {
 			idString := values[0]
-			userID = idString
+			ID = idString
+		} else {
+			return nil, status.Error(codes.Unauthenticated, "wrong user id format")
 		}
-		if err != nil {
-			return nil, status.Error(codes.Unauthenticated, "Wrong user id format")
-		}
-		ctx = context.WithValue(ctx, UserIDMetaKey, userID)
+		ctx = context.WithValue(ctx, UserIDMetaKey, ID)
 	}
 	return handler(ctx, req)
 }

@@ -44,7 +44,7 @@ func NewGRPCServer(ctx *context.Context, storage storage.Storage, cfg *config.Co
 // ShortenURL обрабатывает запрос на сокращение ссылки.
 func (s *ShortenerServer) ShortenURL(ctx context.Context, in *pb.URLRequest) (*pb.URLResponse, error) {
 	var response pb.URLResponse
-	userID, err := utils.GetUserIDFromCtx(ctx, interceptors.UserIDMetaKey)
+	userID, err := utils.GetUserIDFromCtx(ctx, "user_id")
 	if errors.Is(err, internalerrors.ErrUserTypeError) {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -59,7 +59,6 @@ func (s *ShortenerServer) ShortenURL(ctx context.Context, in *pb.URLRequest) (*p
 		case errors.Is(err, internalerrors.ErrOriginalURLAlreadyExists):
 			return nil, status.Error(codes.AlreadyExists, "Ссылыка уже была сохранена")
 		default:
-			fmt.Errorf("error while saving url for shorten %s", err)
 			return nil, status.Error(codes.Internal, "Internal server error")
 		}
 	}
@@ -70,7 +69,7 @@ func (s *ShortenerServer) ShortenURL(ctx context.Context, in *pb.URLRequest) (*p
 // ShortenBatchURL обрабатывает пакетный запрос на сокращение ссылок.
 func (s *ShortenerServer) ShortenBatchURL(ctx context.Context, in *pb.BatchURLRequest) (*pb.BatchURLResponse, error) {
 
-	userID, err := utils.GetUserIDFromCtx(ctx, interceptors.UserIDMetaKey)
+	userID, err := utils.GetUserIDFromCtx(ctx, "user_id")
 	if errors.Is(err, internalerrors.ErrUserTypeError) {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -86,7 +85,6 @@ func (s *ShortenerServer) ShortenBatchURL(ctx context.Context, in *pb.BatchURLRe
 		case errors.Is(err, internalerrors.ErrKeyAlreadyExists):
 			return nil, status.Error(codes.AlreadyExists, "В запросе ссылки, которые уже были ранее сохранены")
 		default:
-			fmt.Errorf("Error in saving batch of urls in store, %s", err)
 			return nil, status.Error(codes.Internal, "Internal server error")
 		}
 	}
@@ -111,7 +109,6 @@ func (s *ShortenerServer) GetURL(ctx context.Context, in *pb.GetURLReq) (*pb.Get
 		case errors.Is(err, internalerrors.ErrNotFound):
 			return nil, status.Error(codes.NotFound, "Ссылка не найдена")
 		default:
-			fmt.Errorf("Error getting original url, %s", err)
 			return nil, status.Error(codes.Internal, "Internal server error")
 		}
 	}
@@ -124,7 +121,7 @@ func (s *ShortenerServer) GetUserURLs(ctx context.Context, _ *pb.GetUsersURLsReq
 	response := pb.GetUsersURLsRes{
 		Urls: []*pb.GetUsersURLsRes_UserURL{},
 	}
-	userID, err := utils.GetUserIDFromCtx(ctx, interceptors.UserIDMetaKey)
+	userID, err := utils.GetUserIDFromCtx(ctx, "user_id")
 	if errors.Is(err, internalerrors.ErrUserTypeError) {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -136,7 +133,6 @@ func (s *ShortenerServer) GetUserURLs(ctx context.Context, _ *pb.GetUsersURLsReq
 	}
 	entities, ok := userURLs.([]entity.UserURLEntity)
 	if !ok {
-		fmt.Errorf("Error getting user urls, %s", err)
 		return nil, status.Error(codes.Internal, "Internal server error")
 	}
 	for _, url := range entities {
@@ -151,7 +147,7 @@ func (s *ShortenerServer) GetUserURLs(ctx context.Context, _ *pb.GetUsersURLsReq
 // DeleteUserURLs обрабатывает запрос на удаление сокращенных ссылок.
 func (s *ShortenerServer) DeleteUserURLs(ctx context.Context, in *pb.DeleteUserURLsReq) (*pb.DeleteUserURLsRes, error) {
 	var response pb.DeleteUserURLsRes
-	userID, err := utils.GetUserIDFromCtx(ctx, interceptors.UserIDMetaKey)
+	userID, err := utils.GetUserIDFromCtx(ctx, "user_id")
 	if errors.Is(err, internalerrors.ErrUserTypeError) {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -167,10 +163,9 @@ func (s *ShortenerServer) DeleteUserURLs(ctx context.Context, in *pb.DeleteUserU
 	}()
 	if err != nil {
 		if errors.Is(err, internalerrors.ErrNotFound) {
-			return nil, status.Error(codes.NotFound, "Отсутствуют данные для удаления")
+			return nil, status.Error(codes.NotFound, "no data to delete")
 		}
-		fmt.Errorf("Error deleting user urls, %s", err)
-		return nil, status.Error(codes.Internal, "Internal server error")
+		return nil, status.Error(codes.Internal, "internal server error")
 	}
 	return &response, nil
 }
@@ -179,7 +174,6 @@ func (s *ShortenerServer) DeleteUserURLs(ctx context.Context, in *pb.DeleteUserU
 func (s *ShortenerServer) GetStats(ctx context.Context, _ *pb.GetStatsReq) (*pb.GetStatsRes, error) {
 	ts, err := utils.GetCIDR(s.cfg.TrustedSubnet)
 	if err != nil {
-		fmt.Errorf("Error getting CIDR, %s", err)
 		ts = nil
 	}
 	if ts == nil {
@@ -201,8 +195,7 @@ func (s *ShortenerServer) GetStats(ctx context.Context, _ *pb.GetStatsReq) (*pb.
 		response.Users = int32(users)
 		return &response, nil
 	} else {
-		fmt.Errorf("smth wrong in storage, %s", err)
-		return nil, status.Error(codes.Internal, "Forbidden")
+		return nil, status.Error(codes.Internal, "forbidden")
 	}
 }
 
