@@ -13,6 +13,7 @@ type Storage interface {
 	SetURLBatch(u map[string]entity.UserURL) (map[string]entity.UserURL, error)
 	GetUserUrls(userID string) (any, error)
 	DeleteUserURLs(userID string, group *sync.WaitGroup) (chan string, error)
+	GetStats() (int, int, error)
 }
 
 // Pinger интерфейс для проверки соединения PostgreSQL
