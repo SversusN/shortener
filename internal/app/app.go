@@ -3,8 +3,11 @@ package app
 
 import (
 	"context"
+	"github.com/SversusN/shortener/internal/grpcsrv"
 	"golang.org/x/crypto/acme/autocert"
+	"google.golang.org/grpc"
 	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -34,7 +37,8 @@ type App struct {
 	Logger     *logger.ServerLogger //Внедорение логера
 	FileHelper *utils.FileHelper    //Работа с файлом
 	Context    context.Context      //Контекст приложения
-	wg         *sync.WaitGroup
+	wg         *sync.WaitGroup      //waitgroup для всех зависимых компонентов
+	gs         *grpc.Server         //сервер grpc
 }
 
 // App Конструктор пакета, создает целевой объект приложения с нужными зависимостями
@@ -52,10 +56,17 @@ func New() *App {
 			log.Fatalln("Failed to connect to database", err)
 		}
 	}
+<<<<<<< Updated upstream
 	nh := handlers.NewHandlers(cfg, ns, wg)
+=======
+
+	nh := handlers.NewHandlers(cfg, ns, wg, ts)
+	gs := grpcsrv.NewGRPCServer(&ctx, ns, cfg, wg)
+
+>>>>>>> Stashed changes
 	lg := logger.CreateLogger(zap.NewAtomicLevelAt(zap.InfoLevel))
 
-	return &App{cfg, ns, nh, lg, fh, ctx, wg}
+	return &App{cfg, ns, nh, lg, fh, ctx, wg, gs}
 }
 
 // CreateRouter Создание роутера Chi
@@ -85,6 +96,7 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 // Run Создание роутера веб сервера и запуск веб сервера
 func (a App) Run() {
 	r := a.CreateRouter(*a.Handlers)
+
 	//Переменные для завершения
 	idleConnsClosed := make(chan struct{})
 	sigint := make(chan os.Signal, 1)
@@ -94,7 +106,20 @@ func (a App) Run() {
 		log.Println(http.ListenAndServe("localhost:90", nil))
 	}()
 
-	log.Printf("running on %s\n", a.Config.FlagAddress)
+	go func() {
+		listen, err := net.Listen("tcp", a.Config.GRPCAddress)
+		if err != nil {
+			log.Printf("listen tcp has failed: %v", err)
+			return
+		}
+		err = a.gs.Serve(listen)
+		if err != nil {
+			log.Printf("listen tcp has failed: %v", err)
+			return
+		}
+	}()
+	log.Printf("running http on %s\n", a.Config.FlagAddress)
+	log.Printf("running grpc on %s\n", a.Config.GRPCAddress)
 	server := &http.Server{
 		Addr:    a.Config.FlagAddress,
 		Handler: r,
@@ -110,6 +135,8 @@ func (a App) Run() {
 		if err := server.Shutdown(ctx); err != nil {
 			log.Println("HTTP server Shutdown:", err)
 		}
+		a.gs.GracefulStop()
+		log.Println("grpc server Shutdown")
 		close(idleConnsClosed)
 	}()
 
@@ -147,5 +174,4 @@ func (a App) Run() {
 	}
 	<-idleConnsClosed
 	log.Println("Server Shutdown gracefully")
-
 }

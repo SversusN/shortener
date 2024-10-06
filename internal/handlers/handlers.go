@@ -54,6 +54,15 @@ type JSONUserURLs struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
+<<<<<<< Updated upstream
+=======
+
+// statsResponse ответ статистики сервера
+type statsResponse struct {
+	URLs  int `json:"urls"`  // количество сокращённых URL в сервисе
+	Users int `json:"users"` // количество пользователей в сервисе
+}
+>>>>>>> Stashed changes
 
 // NewHandlers инициализация объекта handlers
 func NewHandlers(cfg *config.Config, s storage.Storage, waitGroup *sync.WaitGroup) *Handlers {
