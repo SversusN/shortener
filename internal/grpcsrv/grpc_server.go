@@ -4,7 +4,6 @@ package grpcsrv
 import (
 	"context"
 	"errors"
-	"fmt"
 	"google.golang.org/grpc/metadata"
 	"net"
 	"sync"
@@ -128,7 +127,6 @@ func (s *ShortenerServer) GetUserURLs(ctx context.Context, _ *pb.GetUsersURLsReq
 
 	userURLs, err := s.storage.GetUserUrls(userID)
 	if err != nil {
-		fmt.Errorf("Error getting user urls, %s", err)
 		return nil, status.Error(codes.Internal, "Internal server error")
 	}
 	entities, ok := userURLs.([]entity.UserURLEntity)
