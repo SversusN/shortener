@@ -3,6 +3,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -28,6 +30,9 @@ import (
 	"github.com/SversusN/shortener/internal/storage/storage"
 	"golang.org/x/crypto/acme/autocert"
 )
+
+// GrpcNotRunning позволяет получить статус запуска из горутины сервера GRPC
+var GrpcNotRunning atomic.Bool
 
 // App структура приложения
 type App struct {
@@ -104,40 +109,51 @@ func (a App) Run() {
 		log.Println(http.ListenAndServe("localhost:90", nil))
 	}()
 
+	//Запуск grpc сервера
 	go func() {
-		listen, err := net.Listen("tcp", a.Config.GRPCAddress)
-		if err != nil {
-			log.Printf("listen tcp has failed: %v", err)
-			return
-		}
-		err = a.gs.Serve(listen)
-		if err != nil {
-			log.Printf("listen tcp has failed: %v", err)
+		//Проверяем, не подкинули ли нам свинью с конфигом
+		if a.Config.GRPCAddress != "" {
+			listen, err := net.Listen("tcp", a.Config.GRPCAddress)
+			if err != nil {
+				GrpcNotRunning.Store(true)
+				log.Printf("listen tcp has failed: %v", err)
+				return
+			}
+			err = a.gs.Serve(listen)
+			if err != nil {
+				log.Printf("listen tcp has failed: %v", err)
+				return
+			}
+		} else {
+			log.Printf("grpc was not running. Bad address = %s\n", a.Config.GRPCAddress)
 			return
 		}
 	}()
-	log.Printf("running http on %s\n", a.Config.FlagAddress)
-	log.Printf("running grpc on %s\n", a.Config.GRPCAddress)
+
 	server := &http.Server{
 		Addr:    a.Config.FlagAddress,
 		Handler: r,
 	}
-	//Ждем сигнала завершения
+
+	//Ждем сигнала завершения gracefull
 	go func() {
 		<-sigint
-		log.Println("shutting down server...")
-
+		log.Println("try shutting down api servers...")
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
 		if err := server.Shutdown(ctx); err != nil {
 			log.Println("HTTP server Shutdown:", err)
 		}
-		a.gs.GracefulStop()
-		log.Println("grpc server Shutdown")
+		//Завершаем, если состояние переменной было изменено
+		if !GrpcNotRunning.Load() {
+			a.gs.GracefulStop()
+			log.Println("grpc server shutdown")
+		}
 		close(idleConnsClosed)
 	}()
 
+	//Основной поток http сервера
 	if a.Config.EnableHTTPS {
 		manager := &autocert.Manager{
 			// директория для хранения сертификатов
@@ -158,14 +174,14 @@ func (a App) Run() {
 		log.Println("Server Shutdown gracefully")
 
 		//запуск https
-		if err := server.ListenAndServeTLS("", ""); err != http.ErrServerClosed {
+		if err := server.ListenAndServeTLS("", ""); !errors.Is(err, http.ErrServerClosed) {
 			// ошибки старта или остановки Listener
 			log.Fatalf("HTTP server ListenAndServe: %v", err)
 		}
 		<-idleConnsClosed
 		log.Println("Server Shutdown gracefully")
 	} else {
-		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			// ошибки старта или остановки Listener
 			log.Fatalf("HTTP server ListenAndServe: %v", err)
 		}

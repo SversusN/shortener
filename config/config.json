@@ -3,6 +3,7 @@
   "flag_base_address": "http://localhost:80",
   "flag_file_path": "",
   "data_base_dsn": "",
-  "enable_https": false,
-  "trusted_subnet": ""
+  "enable_https": true,
+  "trusted_subnet": "",
+  "grpc_address": "3200"
 }

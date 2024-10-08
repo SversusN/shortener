@@ -90,8 +90,8 @@ func NewConfig() (c *Config) {
 	if trustedSubnet, ok := os.LookupEnv("TRUSTED_SUBNET"); ok {
 		c.TrustedSubnet = trustedSubnet
 	}
-	if trustedSubnet, ok := os.LookupEnv("GRPC_ADDRESS"); ok {
-		c.TrustedSubnet = trustedSubnet
+	if GRPCAddress, ok := os.LookupEnv("GRPC_ADDRESS"); ok {
+		c.GRPCAddress = GRPCAddress
 	}
 
 	return c
