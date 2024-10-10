@@ -16,3 +16,8 @@ func GenerateShortKey() string {
 	}
 	return fmt.Sprintf("%X", b[0:])
 }
+
+// GetFullURL getFullURL - создает валидную полноценную ссылку из адреса и короткого ключа
+func GetFullURL(baseURL string, result string) string {
+	return fmt.Sprint(baseURL, "/", result)
+}

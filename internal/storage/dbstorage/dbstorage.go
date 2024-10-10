@@ -240,3 +240,31 @@ func (pg *PostgresDB) DeleteUserURLs(userID string, group *sync.WaitGroup) (dele
 
 	return deletedURLs, nil
 }
+
+// GetStats получение количества ссылок и уникальных пользователей
+func (pg *PostgresDB) GetStats() (usersCount int, URLsCount int, statError error) {
+
+	tx, err := pg.db.Begin()
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+	query := "SELECT COALESCE(count(*),0) as URLsCount FROM URLS WHERE is_deleted = FALSE;"
+	row := tx.QueryRowContext(pg.ctx, query)
+	err = row.Scan(URLsCount)
+	if err != nil {
+		return 0, 0, err
+	}
+	queryUsers := "SELECT COALESCE(count(distinct user_id),0) as usersCount FROM URLS WHERE is_deleted = FALSE;"
+	rowUsers := tx.QueryRowContext(pg.ctx, queryUsers)
+	err = rowUsers.Scan(usersCount)
+	if err != nil {
+		return 0, 0, err
+	}
+	tx.Commit()
+	return usersCount, URLsCount, nil
+}

@@ -158,6 +158,24 @@ func (m *MapStorage) GetKey(userURL entity.UserURL) (string, error) {
 	}
 }
 
+// GetStats функция статистики пользователя и ссылок
+func (m *MapStorage) GetStats() (usersCount int, URLsCount int, statError error) {
+	URLsCount = lenSyncMap(m.data)
+	userArray := make([]string, 0)
+	m.data.Range(func(key, value interface{}) bool {
+		if value.(entity.UserURL).UserID != "" {
+			userArray = append(userArray, value.(entity.UserURL).UserID)
+		}
+		return true
+	})
+	uniqueUserList := map[string]bool{}
+	for _, key := range userArray {
+		uniqueUserList[key] = true
+	}
+	usersCount = len(uniqueUserList)
+	return usersCount, URLsCount, nil
+}
+
 // lenSyncMap размер map
 func lenSyncMap(m *sync.Map) int {
 	var i int

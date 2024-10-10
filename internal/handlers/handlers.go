@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"sync"
 
@@ -53,6 +54,12 @@ type JSONBatchResponse struct {
 type JSONUserURLs struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
+}
+
+// statsResponse ответ статистики сервера
+type statsResponse struct {
+	URLs  int `json:"urls"`  // количество сокращённых URL в сервисе
+	Users int `json:"users"` // количество пользователей в сервисе
 }
 
 // NewHandlers инициализация объекта handlers
@@ -316,6 +323,55 @@ func (h *Handlers) HandlerDeleteUserURLs(w http.ResponseWriter, r *http.Request)
 		}
 	}()
 	w.WriteHeader(http.StatusAccepted)
+}
+
+// HandlerGetStats получение статистической информации о ссылках/пользователях
+func (h *Handlers) HandlerGetStats(w http.ResponseWriter, r *http.Request) {
+	trustSubnet, err := utils.GetCIDR(h.cfg.TrustedSubnet)
+	if err != nil {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	if trustSubnet == nil {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	clientIP := r.Header.Get("X-Real-IP")
+	if clientIP == "" {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	ip := net.ParseIP(clientIP)
+	if ip == nil {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	if !trustSubnet.Contains(ip) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	countUsers, countURLs, err := storage.Storage.GetStats(nil)
+	if err != nil {
+		statsResp := statsResponse{
+			URLs:  0,
+			Users: 0,
+		}
+		statsResp.Users = countUsers
+		statsResp.URLs = countURLs
+
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(statsResp)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		http.Error(w, "Can`t get from storage", http.StatusInternalServerError)
+		return
+	}
 }
 
 // indexOfURL получает индекс или возвращает -1

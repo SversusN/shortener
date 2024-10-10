@@ -3,13 +3,16 @@ package app
 
 import (
 	"context"
-	"golang.org/x/crypto/acme/autocert"
+	"errors"
+	"google.golang.org/grpc"
 	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -17,6 +20,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/SversusN/shortener/config"
+	"github.com/SversusN/shortener/internal/grpcsrv"
 	"github.com/SversusN/shortener/internal/handlers"
 	"github.com/SversusN/shortener/internal/logger"
 	mw "github.com/SversusN/shortener/internal/middleware"
@@ -24,7 +28,11 @@ import (
 	"github.com/SversusN/shortener/internal/storage/dbstorage"
 	"github.com/SversusN/shortener/internal/storage/primitivestorage"
 	"github.com/SversusN/shortener/internal/storage/storage"
+	"golang.org/x/crypto/acme/autocert"
 )
+
+// GrpcNotRunning позволяет получить статус запуска из горутины сервера GRPC
+var GrpcNotRunning atomic.Bool
 
 // App структура приложения
 type App struct {
@@ -34,7 +42,8 @@ type App struct {
 	Logger     *logger.ServerLogger //Внедорение логера
 	FileHelper *utils.FileHelper    //Работа с файлом
 	Context    context.Context      //Контекст приложения
-	wg         *sync.WaitGroup
+	wg         *sync.WaitGroup      //waitgroup для всех зависимых компонентов
+	gs         *grpc.Server         //сервер grpc
 }
 
 // App Конструктор пакета, создает целевой объект приложения с нужными зависимостями
@@ -53,9 +62,11 @@ func New() *App {
 		}
 	}
 	nh := handlers.NewHandlers(cfg, ns, wg)
+	gs := grpcsrv.NewGRPCServer(&ctx, ns, cfg, wg)
+
 	lg := logger.CreateLogger(zap.NewAtomicLevelAt(zap.InfoLevel))
 
-	return &App{cfg, ns, nh, lg, fh, ctx, wg}
+	return &App{cfg, ns, nh, lg, fh, ctx, wg, gs}
 }
 
 // CreateRouter Создание роутера Chi
@@ -76,6 +87,9 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 				r.Get("/user/urls", hnd.HandlerGetUserURLs)
 				r.Delete("/user/urls", hnd.HandlerDeleteUserURLs)
 			})
+			r.Group(func(r chi.Router) {
+				r.Get("/internal/stats", hnd.HandlerGetStats)
+			})
 
 		})
 	})
@@ -85,6 +99,7 @@ func (a App) CreateRouter(hnd handlers.Handlers) chi.Router {
 // Run Создание роутера веб сервера и запуск веб сервера
 func (a App) Run() {
 	r := a.CreateRouter(*a.Handlers)
+
 	//Переменные для завершения
 	idleConnsClosed := make(chan struct{})
 	sigint := make(chan os.Signal, 1)
@@ -94,25 +109,51 @@ func (a App) Run() {
 		log.Println(http.ListenAndServe("localhost:90", nil))
 	}()
 
-	log.Printf("running on %s\n", a.Config.FlagAddress)
+	//Запуск grpc сервера
+	go func() {
+		//Проверяем, не подкинули ли нам свинью с конфигом
+		if a.Config.GRPCAddress != "" {
+			listen, err := net.Listen("tcp", a.Config.GRPCAddress)
+			if err != nil {
+				GrpcNotRunning.Store(true)
+				log.Printf("listen tcp has failed: %v", err)
+				return
+			}
+			err = a.gs.Serve(listen)
+			if err != nil {
+				log.Printf("listen tcp has failed: %v", err)
+				return
+			}
+		} else {
+			log.Printf("grpc was not running. Bad address = %s\n", a.Config.GRPCAddress)
+			return
+		}
+	}()
+
 	server := &http.Server{
 		Addr:    a.Config.FlagAddress,
 		Handler: r,
 	}
-	//Ждем сигнала завершения
+
+	//Ждем сигнала завершения gracefull
 	go func() {
 		<-sigint
-		log.Println("shutting down server...")
-
+		log.Println("try shutting down api servers...")
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
 		if err := server.Shutdown(ctx); err != nil {
 			log.Println("HTTP server Shutdown:", err)
 		}
+		//Завершаем, если состояние переменной было изменено
+		if !GrpcNotRunning.Load() {
+			a.gs.GracefulStop()
+			log.Println("grpc server shutdown")
+		}
 		close(idleConnsClosed)
 	}()
 
+	//Основной поток http сервера
 	if a.Config.EnableHTTPS {
 		manager := &autocert.Manager{
 			// директория для хранения сертификатов
@@ -133,19 +174,18 @@ func (a App) Run() {
 		log.Println("Server Shutdown gracefully")
 
 		//запуск https
-		if err := server.ListenAndServeTLS("", ""); err != http.ErrServerClosed {
+		if err := server.ListenAndServeTLS("", ""); !errors.Is(err, http.ErrServerClosed) {
 			// ошибки старта или остановки Listener
 			log.Fatalf("HTTP server ListenAndServe: %v", err)
 		}
 		<-idleConnsClosed
 		log.Println("Server Shutdown gracefully")
 	} else {
-		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			// ошибки старта или остановки Listener
 			log.Fatalf("HTTP server ListenAndServe: %v", err)
 		}
 	}
 	<-idleConnsClosed
 	log.Println("Server Shutdown gracefully")
-
 }

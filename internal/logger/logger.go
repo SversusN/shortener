@@ -10,10 +10,10 @@ import (
 
 // ServerLogger структура логера
 type ServerLogger struct {
-	logger *zap.Logger //не хочу делать Sugar, но хочу использовать ниже.
+	Logger *zap.Logger //не хочу делать Sugar, но хочу использовать ниже.
 }
 
-// CreateLogger функуия создания с возможностью регулирования уровней
+// CreateLogger функция создания с возможностью регулирования уровней
 func CreateLogger(level zap.AtomicLevel) *ServerLogger {
 	cfg := zap.NewProductionConfig()
 	cfg.Level = level
@@ -23,7 +23,7 @@ func CreateLogger(level zap.AtomicLevel) *ServerLogger {
 		return nil
 	}
 	return &ServerLogger{
-		logger: l,
+		Logger: l,
 	}
 }
 
@@ -53,7 +53,7 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 
 // LoggingMW функция middleware для внерения в роутер
 func (l ServerLogger) LoggingMW() func(http.Handler) http.Handler {
-	sl := *l.logger.Sugar()
+	sl := *l.Logger.Sugar()
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, req *http.Request) {
 			defer func() {
